@@ -20,3 +20,4 @@ t/400_ping_syn.t
 t/410_syn_host.t
 t/450_service.t
 t/500_ping_icmp.t
+t/510_ping_udp.t

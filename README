@@ -1,8 +1,6 @@
 NAME
     Net::Ping - check a remote host for reachability
 
-    $Id: Ping.pm,v 1.69 2003/01/23 17:21:29 rob Exp $
-
 SYNOPSIS
         use Net::Ping;
 
@@ -156,8 +154,8 @@ DESCRIPTION
 
         This is enabled by default.
 
-    $p->tcp_service_check( { 0 | 1 } );
-        Set whether or not the tcp connect behavior should enforce remote
+    $p->service_check( { 0 | 1 } );
+        Set whether or not the connect behavior should enforce remote
         service availability as well as reachability. Normally, if the
         remote server reported ECONNREFUSED, it must have been reachable
         because of the status packet that it reported. With this option
@@ -169,11 +167,16 @@ DESCRIPTION
         unresponsive to any clients connecting, but if the kernel throws the
         ACK packet, it is considered alive anyway. To really determine if
         the server is responding well would be application specific and is
-        beyond the scope of Net::Ping.
+        beyond the scope of Net::Ping. For udp protocol, enabling this
+        option demands that the remote server replies with the same udp data
+        that it was sent as defined by the udp echo service.
 
-        This only affects "tcp" and "syn" protocols.
+        This affects the "udp", "tcp", and "syn" protocols.
 
         This is disabled by default.
+
+    $p->tcp_service_check( { 0 | 1 } );
+        Depricated method, but does the same as service_check() method.
 
     $p->hires( { 0 | 1 } );
         Causes this module to use Time::HiRes module, allowing milliseconds
@@ -302,6 +305,15 @@ INSTALL
 
       rpm -ih RPMS/noarch/perl-Net-Ping-xxxx.rpm
 
+BUGS
+    For a list of known issues, visit:
+
+    https://rt.cpan.org/NoAuth/Bugs.html?Dist=Net-Ping
+
+    To report a new bug, visit:
+
+    https://rt.cpan.org/NoAuth/ReportBug.html?Queue=Net-Ping
+
 AUTHORS
       Current maintainer:
         bbb@cpan.org (Rob Brown)
@@ -326,4 +338,6 @@ COPYRIGHT
 
     This program is free software; you may redistribute it and/or modify it
     under the same terms as Perl itself.
+
+    $Id: Ping.pm,v 1.75 2003/04/12 20:51:17 rob Exp $
 

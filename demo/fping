@@ -10,6 +10,7 @@ my $opt_e = undef;
 my $opt_f = undef;
 my $opt_h = undef;
 my $opt_P = "http";
+my $opt_s = undef;
 my $opt_t = 8000;
 my $opt_u = undef;
 my $opt_v = undef;
@@ -30,6 +31,7 @@ Getopt::Long::Configure("no_ignore_case");
    "file=s"     => \$opt_f,
    "help"       => \$opt_h,
    "Port=s"     => \$opt_P,
+   "service"    => \$opt_s,
    "timeout=n"  => \$opt_t,
    "unreachable"=> \$opt_u,
    "version"    => \$opt_v,
@@ -38,7 +40,7 @@ Getopt::Long::Configure("no_ignore_case");
 if ($opt_v) {
   my $Id = $0;
   # Just print the version and exit
-  print "$Id: fping,v 1.8 2002/10/14 15:54:32 rob Exp $/";
+  print "$Id: fping,v 1.9 2003/03/04 15:39:46 rob Exp $/";
   exit(0);
 }
 
@@ -74,6 +76,9 @@ if ($hostsfile) {
 }
 
 my $p = new Net::Ping "syn", $opt_t/1000;
+if ($opt_s) {
+  $p->tcp_service_check($opt_s);
+}
 if ($opt_e) {
   if (eval {require Time::HiRes;}) {
     $p->hires;
@@ -153,6 +158,11 @@ B<-h>   Print this usage message.
 B<-P> port   Specify the port to connect to on the target host.
 It may be a numeric port or a service name.  Default is http.
 
+B<-s>   Specify that the remote service should be on and listening
+in order to report as alive.  The default behaviour is to report
+the remote server as alive even when ECONNREFUSED is returned for
+the tcp connection attempt.
+
 B<-t> timeout   Target timeout in milliseconds that the TCP
 three-way handshake must be completed by (default 8000 ms).
 timeout is only effective as multiples of 1000 unless (-e)
@@ -183,7 +193,7 @@ Some differences are as follows:
 
 bbb@cpan.org (Rob Brown)
 
-$Header: /usr/local/cvsroot/freeware/Net-Ping/demo/fping,v 1.8 2002/10/14 15:54:32 rob Exp $
+$Header: /usr/local/cvsroot/freeware/Net-Ping/demo/fping,v 1.9 2003/03/04 15:39:46 rob Exp $
 
 $CVSROOT :pserver:anonymous@cvs.roobik.com.:/usr/local/cvsroot/freeware
 
