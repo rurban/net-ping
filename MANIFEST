@@ -4,7 +4,6 @@ lib/Net/Ping.pm
 perl-Net-Ping.spec
 perl-Net-Ping.spec.PL
 README
-INSTALL
 Changes
 t/100_load.t
 t/110_icmp_inst.t

@@ -1,5 +1,11 @@
 use ExtUtils::MakeMaker;
 
+my $brick_over = {
+  # Hack to avoid rpm conflicts with old man page.
+  MAN3EXT => 3,
+  # Hack to force this version to override.
+  INSTALLSITELIB => "\$(INSTALLARCHLIB)",
+};
 WriteMakefile
   NAME => "Net::Ping",
   VERSION_FROM => "lib/Net/Ping.pm",
@@ -8,22 +14,15 @@ WriteMakefile
   dist => {
     COMPRESS => "gzip -9 -vf",
   },
-  constants => {
-    # Hack to avoid rpm conflicts with old man page.
-    MAN3EXT => 3,
-    # Hack to force this version to override.
-    INSTALLSITELIB => "\$(INSTALLARCHLIB)",
-  },
   ;
 
 package MY;
 
 sub constants {
   my $self = shift;
-  my %brick_over = (@_);
-  my $block = $self->SUPER::constants(@_);
-  foreach my $field (keys %brick_over) {
-    $block =~ s%^($field\s*=).*%$1 $brick_over{$field}%m;
+  my $block = $self->SUPER::constants();
+  foreach my $field (keys %{ $brick_over }) {
+    $block =~ s%^($field\s*=).*%$1 $brick_over->{$field}%m;
   }
   $block;
 }

@@ -4,7 +4,11 @@
 use strict;
 
 my $p = $1 if $0 =~ m%([^/]*)$%;
-my $output = shift or die "create what?";
+my $output = shift or do {
+  my $dest = $p;
+  $dest =~ /\.PL$/;
+  $dest;
+};
 
 ### Extract $VERSION from VERSION_FROM
 my $name;
