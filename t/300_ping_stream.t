@@ -13,7 +13,7 @@ BEGIN {
 #
 # NOTE:
 #   The echo service must be enabled on localhost
-#   to better test the the stream protocol ping.
+#   to really test the stream protocol ping.
 
 use Test;
 use Net::Ping;
@@ -35,4 +35,21 @@ if ($p -> ping("localhost")) {
   # Echo port is off, skip the tests
   for (2..12) { skip "Local echo port is off", 1; }
   exit;
+}
+
+__END__
+
+A simple xinetd configuration to enable the echo service can easily be made.
+Just create the following file before restarting xinetd:
+
+/etc/xinetd.d/echo:
+
+# description: echo service
+service echo
+{
+        socket_type             = stream
+        wait                    = no
+        user                    = root
+        server                  = /bin/cat
+        disable                 = no
 }

@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.12 2001/12/04 19:57:54 rob Exp $
+# $Id: Ping.pm,v 1.13 2001/12/07 02:18:44 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -15,7 +15,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = 2.08;
+$VERSION = 2.09;
 
 # Constants
 
@@ -595,7 +595,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.12 2001/12/04 19:57:54 rob Exp $
+$Id: Ping.pm,v 1.13 2001/12/07 02:18:44 rob Exp $
 
 =head1 SYNOPSIS
 

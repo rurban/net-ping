@@ -1,6 +1,10 @@
 CHANGES
 -------
 
+2.09  Dec 06 19:00 2001
+	- Documental and test changes only.
+	- No functional changes.
+
 2.08  Dec 04 13:00 2001
 	- Faster response for Win32 tcp_connect.
 	- Better explanations in test comments.
