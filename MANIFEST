@@ -1,8 +1,8 @@
 MANIFEST
 Makefile.PL
 Ping.pm
-Net-Ping.spec.PL
-Net-Ping.spec
+perl-Net-Ping.spec.PL
+perl-Net-Ping.spec
 README
 CHANGES
 INSTALL
