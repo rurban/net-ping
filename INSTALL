@@ -21,4 +21,4 @@ Or install it RPM Style:
 
 $ rpm -ta Net-Ping-xxxx.tar.gz
 
-# rpm -i RPMS/*/perl-Net-Ping-xxxx.rpm
+# rpm -ih RPMS/*/perl-Net-Ping-xxxx.rpm

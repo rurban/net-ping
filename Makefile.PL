@@ -2,11 +2,11 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile
   NAME => "Net::Ping",
-  VERSION_FROM => "Ping.pm",
+  VERSION_FROM => "lib/Net/Ping.pm",
+  ABSTRACT_FROM => "lib/Net/Ping.pm",
   AUTHOR => 'Rob Brown (bbb@cpan.org)',
-  ABSTRACT_FROM => "Ping.pm",
   dist => {
-    COMPRESS => "gzip -9",
+    COMPRESS => "gzip -9 -vf",
   },
   constants => {
     # Hack to avoid rpm conflicts with old man page.
@@ -48,9 +48,10 @@ sub postamble {
 
 pm_to_blib: README
 
-README: Ping.pm
-	pod2text Ping.pm > README
-  ^;
+README: \$(VERSION_FROM)
+	pod2text \$(VERSION_FROM) > README
+
+^;
 }
 
 1;
