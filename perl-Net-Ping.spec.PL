@@ -4,7 +4,7 @@
 use strict;
 
 my $p = $1 if $0 =~ m%([^/]*)$%;
-my $output = shift or do {
+my $output = shift || do {
   my $dest = $p;
   $dest =~ /\.PL$/;
   $dest;
@@ -63,10 +63,6 @@ __DATA__
 %define real_name %{class}-%{subclass}
 %define name perl-%{real_name}
 %define perlver %(rpm -q perl --queryformat '%%{version}' 2> /dev/null || echo %{defperlver})
-
-# Provide perl-specific find-{provides,requires}.
-%define __find_provides %( echo -n /usr/lib/rpm/find-provides && [ -x /usr/lib/rpm/find-provides.perl ] && echo .perl )
-%define __find_requires %( echo -n /usr/lib/rpm/find-requires && [ -x /usr/lib/rpm/find-requires.perl ] && echo .perl )
 
 Summary:        Perl module %{class}::%{subclass}
 Name:           %{name}

@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.40 2002/10/22 03:15:54 rob Exp $
+# $Id: Ping.pm,v 1.43 2002/11/19 18:09:50 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -17,7 +17,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.24";
+$VERSION = "2.25";
 
 # Constants
 
@@ -667,7 +667,8 @@ sub open
 # of time.  Return the result of our efforts.
 
 use constant UDP_FLAGS => 0; # Nothing special on send or recv
-
+# XXX - Use concept by rdw @ perlmonks
+# http://perlmonks.thepen.com/42898.html
 sub ping_udp
 {
   my ($self,
@@ -781,17 +782,13 @@ sub ping_syn
     #warn "WARNING: Nonblocking connect connected anyway? ($^O)";
   } else {
     # Error occurred connecting.
-    if ($! == ECONNREFUSED) {
-      # "Connection refused" means it resolved okay.
-      # This is fine, just save the error and continue on.
-      $self->{"bad"}->{$host} = $!;
-    } elsif ($! == EINPROGRESS) {
+    if ($! == EINPROGRESS) {
       # The connection is just still in progress.
-      # This is fine, just continue on.
+      # This is the expected condition.
     } else {
-      # This must really be something bad.
+      # Just save the error and continue on.
+      # The ack() can check the status later.
       $self->{"bad"}->{$host} = $!;
-      return undef;
     }
   }
 
@@ -874,7 +871,16 @@ sub ack
     if (my $host = shift) {
       # Host passed as arg
       if (exists $self->{"bad"}->{$host}) {
-        return ();
+        if (!$self->{"tcp_econnrefused"} &&
+            $self->{"bad"}->{ $host } &&
+            (($! = ECONNREFUSED)>0) &&
+            $self->{"bad"}->{ $host } eq "$!") {
+          # "Connection refused" means reachable
+          # Good, continue
+        } else {
+          # ECONNREFUSED means no good
+          return ();
+        }
       }
       my $host_fd = undef;
       foreach my $fd (keys %{ $self->{"syn"} }) {
@@ -1083,7 +1089,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.40 2002/10/22 03:15:54 rob Exp $
+$Id: Ping.pm,v 1.43 2002/11/19 18:09:50 rob Exp $
 
 =head1 SYNOPSIS
 

@@ -14,7 +14,6 @@ BEGIN {
 use strict;
 use Test;
 use Net::Ping;
-use IO::Socket;
 
 # I'm lazy so I'll just use IO::Socket
 # for the TCP Server stuff instead of doing
@@ -30,7 +29,6 @@ my $sock1 = new IO::Socket::INET
   LocalAddr => "127.0.0.1",
   Proto => "tcp",
   Listen => 8,
-  Type => SOCK_STREAM,
   or warn "bind: $!";
 
 # Make sure it worked.
@@ -41,7 +39,6 @@ my $sock2 = new IO::Socket::INET
   LocalAddr => "127.0.0.1",
   Proto => "tcp",
   Listen => 8,
-  Type => SOCK_STREAM,
   or warn "bind: $!";
 
 # Make sure it worked too.

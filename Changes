@@ -1,6 +1,11 @@
 CHANGES
 -------
 
+2.25  Nov 19 12:00 2002
+	- Handle condition where O_NONBLOCK tcp connects
+	  immediately fail without EINPROGRESS
+	  (certain platforms or SMP optimizations).
+
 2.24  Oct 21 22:00 2002
 	- Compatibility fixes.
 	- Avoid using 127.1.1.1 and 127.2.2.2 because

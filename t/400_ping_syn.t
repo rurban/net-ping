@@ -44,6 +44,7 @@ my $webs = {
   "www.yahoo.com." => 1,
   "www.about.com." => 1,
   "www.microsoft.com." => 1,
+  "127.0.0.1" => 1,
 };
 
 use strict;
