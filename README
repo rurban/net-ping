@@ -339,5 +339,5 @@ COPYRIGHT
     This program is free software; you may redistribute it and/or modify it
     under the same terms as Perl itself.
 
-    $Id: Ping.pm,v 1.75 2003/04/12 20:51:17 rob Exp $
+    $Id: Ping.pm,v 1.81 2003/04/18 04:16:03 rob Exp $
 
