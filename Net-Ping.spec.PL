@@ -31,7 +31,8 @@ Release:	1
 License:	GPL
 Group:		Development/Languages/Perl
 Source0:	http://www.cpan.org./authors/id/B/BB/BBB/%{perlmod}-%{version}.tar.gz
-Packager:	Rob Brown <rob@roobik.com>
+Packager:	Rob Brown <bbb@cpan.org>
+Prefix: 	/usr
 BuildRequires:	perl
 Requires:	perl
 BuildRoot:	/var/tmp/%{name}-%{version}-root
@@ -50,11 +51,8 @@ make test
 
 %install
 rm -rf $RPM_BUILD_ROOT
-# Just a hack to let this version override the default
-eval `perl -V:installarchlib`
-mkdir -p $RPM_BUILD_ROOT$installarchlib/Net
-cp Ping.pm $RPM_BUILD_ROOT$installarchlib/Net/.
-echo $installarchlib/Net/*.pm > %{name}-filelist
+make PREFIX=$RPM_BUILD_ROOT%{prefix} install
+find $RPM_BUILD_ROOT%{prefix} -type f -print | perl -p -e "s@^$RPM_BUILD_ROOT(.*)@\$1*@g" | grep -v perllocal.pod | grep -v packlist > %{name}-filelist
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -65,5 +63,7 @@ rm -rf $RPM_BUILD_ROOT
 %post
 
 %changelog
-* Thu Nov 15 2001 Rob Brown <rob@roobik.com>
+* Sat Apr 06 2002 Rob Brown <bbb@cpan.org>
+- Hack to let this version override the default
+* Thu Nov 15 2001 Rob Brown <bbb@cpan.org>
 - initial creation

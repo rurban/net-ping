@@ -1,8 +1,16 @@
 CHANGES
 -------
 
+2.15  Apr 06 23:00 2002
+	- Added ABSTRACT info.
+	- Allow for smoother upgrade from
+	  from older Net::Ping versions.
+	- Change default protocol from udp to tcp
+	  so it will work on most default systems
+	  without any arguments to new().
+
 2.14  Apr 01 14:00 2002
-	- Added reverse lookup feature.
+	- Added text ip lookup feature.
 	  e@arix.com (Erick Calder)
 
 2.13  Apr 01 14:00 2002
