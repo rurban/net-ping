@@ -2,7 +2,7 @@
 %define perlmod Net-Ping
 Summary:	%{perlmod} perl module
 Name:		perl-%{perlmod}
-Version:	2.10
+Version:	2.11
 Release:	1
 License:	GPL
 Group:		Development/Languages/Perl
