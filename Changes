@@ -1,6 +1,37 @@
 CHANGES
 -------
 
+2.27  Jan 15 23:00 2003
+	- Patch by slebedev@iwl.net (Sergey Lebedev):
+	- 1) Fixed response packet parsing offsets in ping_icmp.
+	- 2) Added icmp_result method.
+	- Patch by radu@netsoft.ro (Radu Greab):
+	- 1) Changed ping_tcp() to use non-blocking connect
+	  instead of alarm() interface in order to avoid
+	  conflicts with user applications.
+	- 2) Also get rid of all eval {} code in ping_tcp
+	  in order to avoid catching SIGALRM trigger and
+	  to avoid conflicts with other evals.
+	- 3) Avoid ioctl() syscall for more accurate error
+	  detection on non-blocking tcp connects.
+	- 4) Fix fcntl() syntax usage.
+	- Patch by adelton@fi.muni.cz (Honza Pazdziora):
+	- 1) Fix icmp request pack code to be more platform
+	  independent regardless of Big/Little Endian.
+	- 2) Use binmode for filehandle in case perl 5.8.0
+	  tries to dink with the data stream.
+	- Other changes by Rob Brown:
+	- Fixed ack() failures under certain rare conditions.
+	- Use more appropriate \z instead of $ in regex.
+	- Resolved Cygwin "make test" problems reported by
+	  h.m.brand@hccnet.nl (H.Merijn Brand).
+	- Add sending a real ICMP packet in the test suite.
+	- Add Socket to PREREQ_PM (missing on some boxes?)
+	- Adjust syn_forking IPC pipe for fatter Win32 pids.
+	- Better handling of alarm() in test suite for Win32.
+	- Add a DESTROY method to reduce chances of
+	  lingering connect-choking children.
+
 2.26  Dec 02 12:00 2002
 	- More compatibility fixes.
 	- Thanks for Solaris bug reports:

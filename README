@@ -1,7 +1,7 @@
 NAME
     Net::Ping - check a remote host for reachability
 
-    $Id: Ping.pm,v 1.46 2002/12/02 19:17:09 rob Exp $
+    $Id: Ping.pm,v 1.64 2003/01/16 23:44:48 rob Exp $
 
 SYNOPSIS
         use Net::Ping;
@@ -68,7 +68,7 @@ DESCRIPTION
     connection to the remote host's echo port. If the connection is
     successfully established, the remote host is considered reachable. No
     data is actually echoed. This protocol does not require any special
-    privileges but has higher overhead than the other two protocols.
+    privileges but has higher overhead than the "udp" and "icmp" protocols.
 
     Specifying the "udp" protocol causes the ping() method to send a udp
     packet to the remote host's echo port. If the echoed packet is received
@@ -238,12 +238,6 @@ DESCRIPTION
         ping() method. This subroutine is obsolete and may be removed in a
         future version of Net::Ping.
 
-WARNING
-    pingecho() or a ping object with the tcp protocol use alarm() to
-    implement the timeout. So, don't use alarm() in your program while you
-    are using pingecho() or a ping object with the tcp protocol. The udp and
-    icmp protocols do not use alarm() to implement the timeout.
-
 NOTES
     There will be less network overhead (and some efficiency in your
     program) if you specify either the udp or the icmp protocol. The tcp
@@ -326,7 +320,7 @@ AUTHORS
         mose@ns.ccsn.edu (Russell Mosemann)
 
 COPYRIGHT
-    Copyright (c) 2002, Rob Brown. All rights reserved.
+    Copyright (c) 2002-2003, Rob Brown. All rights reserved.
 
     Copyright (c) 2001, Colin McMillen. All rights reserved.
 

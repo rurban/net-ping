@@ -11,6 +11,9 @@ WriteMakefile
   VERSION_FROM => "lib/Net/Ping.pm",
   ABSTRACT_FROM => "lib/Net/Ping.pm",
   AUTHOR => 'Rob Brown (bbb@cpan.org)',
+  PREREQ_PM    => { # e.g., Module::Name => 1.1
+    'Socket' => 0,
+  },
   dist => {
     COMPRESS => "gzip -9 -vf",
   },
