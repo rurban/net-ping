@@ -37,7 +37,7 @@ my $webs = {
   # Hopefully this is never a routeable host
   "172.29.249.249" => 0,
 
-  # Hopefully all these web servers are on
+  # Hopefully all these web ports are open
   "www.geocities.com." => 1,
   "www.freeservers.com." => 1,
   "yahoo.com." => 1,
@@ -90,6 +90,6 @@ while (my $host = $p->ack()) {
 alarm(0);
 foreach my $host (keys %{ $webs }) {
   if (!ok !$webs->{$host}) {
-    print STDERR "DOWN: http://$host/\n";
+    print STDERR "DOWN: http://$host/ [$p->{bad}->{$host}]\n";
   }
 }

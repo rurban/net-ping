@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.43 2002/11/19 18:09:50 rob Exp $
+# $Id: Ping.pm,v 1.46 2002/12/02 19:17:09 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -11,13 +11,13 @@ use vars qw(@ISA @EXPORT $VERSION
 use Fcntl qw( F_GETFL F_SETFL O_NONBLOCK );
 use Socket qw( SOCK_DGRAM SOCK_STREAM SOCK_RAW PF_INET SOL_SOCKET
                inet_aton inet_ntoa sockaddr_in );
-use POSIX qw( ECONNREFUSED EINPROGRESS WNOHANG );
+use POSIX qw( ECONNREFUSED EINPROGRESS EAGAIN WNOHANG );
 use FileHandle;
 use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.25";
+$VERSION = "2.26";
 
 # Constants
 
@@ -907,13 +907,36 @@ sub ack
       my $timeout = $stop_time - &time();
       # Force a minimum of 10 ms timeout.
       $timeout = 0.01 if $timeout <= 0.01;
-      if (my $nfound = select(undef, (my $wout=$wbits), undef, $timeout)) {
-        # Done waiting for one of the ACKs
-        my $fd = 0;
-        # Determine which one
-        while (length $wout &&
-               !vec($wout, $fd, 1)) {
-          $fd++;
+
+      my $winner_fd = undef;
+      my $wout = $wbits;
+      my $fd = 0;
+      # Do "bad" fds from $wbits first
+      while ($wout !~ /^\0*$/) {
+        if (vec($wout, $fd, 1)) {
+          # Wipe it from future scanning.
+          vec($wout, $fd, 1) = 0;
+          if (my $entry = $self->{"syn"}->{$fd}) {
+            if ($self->{"bad"}->{ $entry->[0] }) {
+              $winner_fd = $fd;
+              last;
+            }
+          }
+        }
+        $fd++;
+      }
+
+      if (defined($winner_fd) or my $nfound = select(undef, ($wout=$wbits), undef, $timeout)) {
+        if (defined $winner_fd) {
+          $fd = $winner_fd;
+        } else {
+          # Done waiting for one of the ACKs
+          $fd = 0;
+          # Determine which one
+          while ($wout !~ /^\0*$/ &&
+                 !vec($wout, $fd, 1)) {
+            $fd++;
+          }
         }
         if (my $entry = $self->{"syn"}->{$fd}) {
           # Wipe it from future scanning.
@@ -939,7 +962,8 @@ sub ack
             # Store the excuse why the connection failed.
             $self->{"bad"}->{$entry->[0]} = $!;
             if (!$self->{"tcp_econnrefused"} &&
-                $! == ECONNREFUSED) {
+                (($! == ECONNREFUSED) ||
+                 ($! == EAGAIN && $^O =~ /cygwin/i))) {
               # "Connection refused" means reachable
               # Good, continue
             } else {
@@ -1089,7 +1113,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.43 2002/11/19 18:09:50 rob Exp $
+$Id: Ping.pm,v 1.46 2002/12/02 19:17:09 rob Exp $
 
 =head1 SYNOPSIS
 

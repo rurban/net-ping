@@ -1,7 +1,7 @@
 NAME
     Net::Ping - check a remote host for reachability
 
-    $Id: Ping.pm,v 1.43 2002/11/19 18:09:50 rob Exp $
+    $Id: Ping.pm,v 1.46 2002/12/02 19:17:09 rob Exp $
 
 SYNOPSIS
         use Net::Ping;

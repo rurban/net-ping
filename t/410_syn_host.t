@@ -39,7 +39,7 @@ my $webs = {
   # Hopefully this is never a routeable host
   "172.29.249.249" => 0,
 
-  # Hopefully all these web servers are on
+  # Hopefully all these web ports are open
   "www.geocities.com." => 1,
   "www.freeservers.com." => 1,
   "yahoo.com." => 1,
@@ -89,7 +89,7 @@ foreach my $host (sort keys %{ $webs }) {
     if ($on) {
       print STDERR "SUPPOSED TO BE DOWN: http://$host/\n";
     } else {
-      print STDERR "DOWN: http://$host/\n";
+      print STDERR "DOWN: http://$host/ $p->{bad}->{$host}\n";
     }
   }
   delete $webs->{$host};

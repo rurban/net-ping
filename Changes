@@ -1,6 +1,18 @@
 CHANGES
 -------
 
+2.26  Dec 02 12:00 2002
+	- More compatibility fixes.
+	- Thanks for Solaris bug reports:
+	  Paul.Gaborit@enstimac.fr (Paul Gaborit)
+	  Jost.Krieger@ruhr-uni-bochum.de (Jost Krieger)
+	- Thanks for Solaris testing box:
+	  Gunther.Heintzen@rrze.uni-erlangen.de (Gunther Heintzen)
+	- Solaris ENOTCONN select() for write choke bug.
+	- Thanks for Cygwin bug reports:
+	  h.m.brand@hccnet.nl (H.Merijn Brand)
+	- Cygwin "EAGAIN instead of ECONNREFUSED" buttwag.
+
 2.25  Nov 19 12:00 2002
 	- Handle condition where O_NONBLOCK tcp connects
 	  immediately fail without EINPROGRESS
