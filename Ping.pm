@@ -1,10 +1,15 @@
 package Net::Ping;
 
-# Author:   mose@ccsn.edu (Russell Mosemann)
+# Author:   mose@ns.ccsn.edu (Russell Mosemann)
 #
 # Authors of the original pingecho():
 #           karrer@bernina.ethz.ch (Andreas Karrer)
 #           pmarquess@bfsec.bt.co.uk (Paul Marquess)
+#
+# Ported by Rob Brown (rob@roobik.com) so ping_tcp()
+# would work with most default systems.
+#
+# Copyright (c) 2001 Rob Brown. All rights reserved.
 #
 # Copyright (c) 1996 Russell Mosemann.  All rights reserved.  This
 # program is free software; you may redistribute it and/or modify it
@@ -23,7 +28,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = 2.03;
+$VERSION = 2.04;
 
 # Constants
 
