@@ -108,7 +108,8 @@ DESCRIPTION
 
   Functions
 
-    Net::Ping->new([$proto [, $def_timeout [, $bytes [, $device ]]]]);
+    Net::Ping->new([$proto [, $def_timeout [, $bytes [, $device [, $tos
+    ]]]]]);
         Create a new ping object. All of the parameters are optional. $proto
         specifies the protocol to use when doing a ping. The current choices
         are "tcp", "udp", "icmp", "stream", "syn", or "external". The
@@ -129,6 +130,8 @@ DESCRIPTION
         If $device is given, this device is used to bind the source endpoint
         before sending the ping packet. I beleive this only works with
         superuser privileges and with udp and icmp protocols at this time.
+
+        If $tos is given, this ToS is configured into the soscket.
 
     $p->ping($host [, $timeout]);
         Ping the remote host and wait for a response. $host can be either
@@ -339,5 +342,5 @@ COPYRIGHT
     This program is free software; you may redistribute it and/or modify it
     under the same terms as Perl itself.
 
-    $Id: Ping.pm,v 1.81 2003/04/18 04:16:03 rob Exp $
+    $Id: Ping.pm,v 1.86 2003/06/27 21:31:07 rob Exp $
 
