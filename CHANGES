@@ -1,6 +1,10 @@
 CHANGES
 -------
 
+2.08  Dec 04 13:00 2001
+	- Faster response for Win32 tcp_connect.
+	- Better explanations in test comments.
+
 2.07  Nov 28 13:00 2001
 	- Compatibility changes
 	- Works with UNIX and Win32 OS

@@ -14,7 +14,11 @@ BEGIN {
 # NOTE:
 #   Network connectivity will be required for all tests to pass.
 #   Firewalls may also cause some tests to fail, so test it
-#   on a clear network.
+#   on a clear network.  If you know you do not have a direct
+#   connection to remote networks, but you still want the tests
+#   to pass, use the following:
+#
+# $ PERL_CORE=1 make test
 
 use Test;
 use Net::Ping;
