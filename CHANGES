@@ -1,6 +1,9 @@
 CHANGES
 -------
 
+2.05  Nov 18 20:00 2001
+	- Added test suite
+
 2.04  Nov 16 16:00 2001
 	- Added CHANGES and README to tarball.
 	- No functional changes.

@@ -28,7 +28,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = 2.04;
+$VERSION = 2.05;
 
 # Constants
 
