@@ -1,9 +1,20 @@
 CHANGES
 -------
 
+2.23  Oct 18 22:00 2002
+	- Fix ack() fd "each" detection bug.
+	- Add nack() method for OO interface to the
+	  reason why the ack() failed.
+	- Fix premature "Timed out" side effect when a
+	  different specified ack( $host ) fails.
+	- IO::Socket::INET ephemeral port buttwag
+	  hack for the t/450_service.t test.
+	- Documental changes.
+
 2.22  Oct 17 16:00 2002
 	- Add $p->tcp_service_check() method to enforce
 	  remote tcp service availability checking.
+	  Patch by jef@linuxbe.org (Jean-Francois Dive).
 	- Changed default behavior of "syn" protocol to
 	  disabled tcp_service_check instead of enabled.
 	- Win32 compatibility changes ("syn" protocol).

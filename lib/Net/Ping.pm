@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.29 2002/10/17 21:45:49 rob Exp $
+# $Id: Ping.pm,v 1.33 2002/10/19 05:02:43 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -17,7 +17,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.22";
+$VERSION = "2.23";
 
 # Constants
 
@@ -866,7 +866,8 @@ sub ack
         return ();
       }
       my $host_fd = undef;
-      while (my ($fd, $entry) = each %{ $self->{"syn"} }) {
+      foreach my $fd (keys %{ $self->{"syn"} }) {
+        my $entry = $self->{"syn"}->{$fd};
         if ($entry->[0] eq $host) {
           $host_fd = $fd;
           $stop_time = $entry->[4]
@@ -887,8 +888,8 @@ sub ack
 
     while ($wbits !~ /^\0*$/) {
       my $timeout = $stop_time - &time();
-      # Force a minimum of 1 ms timeout.
-      $timeout = 0.001 if $timeout <= .001;
+      # Force a minimum of 10 ms timeout.
+      $timeout = 0.01 if $timeout <= .01;
       if (my $nfound = select(undef, (my $wout=$wbits), undef, $timeout)) {
         # Done waiting for one of the ACKs
         my $fd = 0;
@@ -935,11 +936,15 @@ sub ack
         }
       } elsif (defined $nfound) {
         # Timed out waiting for ACK
-        while (my ($fd, $entry) = each %{ $self->{"syn"} }) {
-          $self->{"bad"}->{$entry->[0]} = "Timed out";
+        foreach my $fd (keys %{ $self->{"syn"} }) {
+          if (vec($wbits, $fd, 1)) {
+            my $entry = $self->{"syn"}->{$fd};
+            $self->{"bad"}->{$entry->[0]} = "Timed out";
+            vec($wbits, $fd, 1) = 0;
+            vec($self->{"wbits"}, $fd, 1) = 0;
+            delete $self->{"syn"}->{$fd};
+          }
         }
-        $self->{"syn"} = {};
-        $wbits = "";
       } else {
         # Weird error occurred with select()
         warn("select: $!");
@@ -961,8 +966,6 @@ sub ack_unfork {
 
   my $rbits = "";
   my $timeout;
-  #use Data::Dumper;
-  #print STDERR Dumper $self->{syn};
   if (keys %{ $self->{"syn"} }) {
     # Scan all hosts that are left
     vec($rbits, fileno($self->{"fork_rd"}), 1) = 1;
@@ -1018,6 +1021,13 @@ sub ack_unfork {
   return ();
 }
 
+# Description:  Tell why the ack() failed
+sub nack {
+  my $self = shift;
+  my $host = shift || croak('Usage> nack($failed_ack_host)');
+  return $self->{"bad"}->{$host} || undef;
+}
+
 # Description:  Close the connection.
 
 sub close
@@ -1041,7 +1051,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.29 2002/10/17 21:45:49 rob Exp $
+$Id: Ping.pm,v 1.33 2002/10/19 05:02:43 rob Exp $
 
 =head1 SYNOPSIS
 
@@ -1188,7 +1198,8 @@ hostname cannot be found or there is a problem with the IP number, the
 success flag returned will be undef.  Otherwise, the success flag will
 be 1 if the host is reachable and 0 if it is not.  For most practical
 purposes, undef and 0 and can be treated as the same case.  In array
-context, the elapsed time is also returned.  The elapsed time value will
+context, the elapsed time as well as the string form of the ip the
+host resolved to are also returned.  The elapsed time value will
 be a float, as retuned by the Time::HiRes::time() function, if hires()
 has been previously called, otherwise it is returned as an integer.
 
@@ -1273,6 +1284,12 @@ If the optional $host argument is specified, the return
 value will be partaining to that host only.
 This call simply does nothing if you are using any protocol
 other than syn.
+
+=item $p->nack( $failed_ack_host );
+
+The reason that host $failed_ack_host did not receive a
+valid ACK.  Useful to find out why when ack( $fail_ack_host )
+returns a false value.
 
 =item $p->close();
 

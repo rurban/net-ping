@@ -25,21 +25,29 @@ plan tests => 37;
 # Everything loaded fine
 ok 1;
 
+"0" =~ /(0)/; # IO::Socket::INET ephemeral buttwag hack
+
 # Start a tcp listen server on ephemeral port
 my $sock1 = new IO::Socket::INET
   LocalAddr => "127.1.1.1",
   Proto => "tcp",
-  Listen => 15,
+  Listen => 8,
+  Reuse => 1,
+  Type => SOCK_STREAM,
   ;
 
 # Make sure it worked.
 ok !!$sock1;
 
-# Start another listen server
+"0" =~ /(0)/; # IO::Socket::INET ephemeral buttwag hack
+
+# Start listening on another ephemeral port
 my $sock2 = new IO::Socket::INET
   LocalAddr => "127.2.2.2",
   Proto => "tcp",
-  Listen => 15,
+  Listen => 8,
+  Reuse => 1,
+  Type => SOCK_STREAM,
   ;
 
 # Make sure it worked too.
