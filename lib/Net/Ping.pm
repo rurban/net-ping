@@ -1,22 +1,23 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.20 2002/10/14 19:58:16 rob Exp $
+# $Id: Ping.pm,v 1.29 2002/10/17 21:45:49 rob Exp $
 
 require 5.002;
 require Exporter;
 
 use strict;
 use vars qw(@ISA @EXPORT $VERSION
-            $def_timeout $def_proto $max_datasize $pingstring $hires $source_verify);
-use FileHandle;
+            $def_timeout $def_proto $max_datasize $pingstring $hires $source_verify $syn_forking);
+use Fcntl qw( F_GETFL F_SETFL O_NONBLOCK );
 use Socket qw( SOCK_DGRAM SOCK_STREAM SOCK_RAW PF_INET SOL_SOCKET
                inet_aton inet_ntoa sockaddr_in );
+use POSIX qw( ECONNREFUSED EINPROGRESS WNOHANG );
+use FileHandle;
 use Carp;
-use POSIX qw(ECONNREFUSED EINPROGRESS);
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.21";
+$VERSION = "2.22";
 
 # Constants
 
@@ -26,11 +27,13 @@ $max_datasize = 1024;       # Maximum data bytes in a packet
 # The data we exchange with the server for the stream protocol
 $pingstring = "pingschwingping!\n";
 $source_verify = 1;         # Default is to verify source endpoint
+$syn_forking = 0;
 
 if ($^O =~ /Win32/i) {
   # Hack to avoid this Win32 spewage:
   # Your vendor has not defined POSIX macro ECONNREFUSED
   *ECONNREFUSED = sub {10061;}; # "Unknown Error" Special Win32 Response?
+  $syn_forking = 1;
 };
 
 # h2ph "asm/socket.h"
@@ -103,6 +106,8 @@ sub new
 
   $self->{"local_addr"} = undef;              # Don't bind by default
 
+  $self->{"tcp_econnrefused"} = undef;        # Default Connection refused behavior
+
   $self->{"seq"} = 0;                         # For counting packets
   if ($self->{"proto"} eq "udp")              # Open a socket
   {
@@ -147,9 +152,16 @@ sub new
       croak("Can't get tcp protocol by name");
     $self->{"port_num"} = (getservbyname('echo', 'tcp'))[2] ||
       croak("Can't get tcp echo port by name");
+    if ($syn_forking) {
+      $self->{"fork_rd"} = FileHandle->new();
+      $self->{"fork_wr"} = FileHandle->new();
+      pipe($self->{"fork_rd"}, $self->{"fork_wr"});
+      $self->{"fh"} = FileHandle->new();
+    } else {
+      $self->{"wbits"} = "";
+      $self->{"bad"} = {};
+    }
     $self->{"syn"} = {};
-    $self->{"bad"} = {};
-    $self->{"wbits"} = "";
     $self->{"stop_time"} = 0;
   }
   elsif ($self->{"proto"} eq "external")
@@ -203,6 +215,17 @@ sub source_verify
   my $self = shift;
   $source_verify = 1 unless defined
     ($source_verify = ((defined $self) && (ref $self)) ? shift() : $self);
+}
+
+# Description: Set whether or not the tcp connect
+# behavior should enforce remote service availability
+# as well as reachability.
+
+sub tcp_service_check
+{
+  my $self = shift;
+  $self->{"tcp_econnrefused"} = 1 unless defined
+    ($self->{"tcp_econnrefused"} = shift());
 }
 
 # Description: allows the module to use milliseconds as returned by
@@ -418,7 +441,10 @@ sub ping_tcp
 
   $@ = ""; $! = 0;
   $ret = $self -> tcp_connect( $ip, $timeout);
-  $ret = 1 if $! == ECONNREFUSED;  # Connection refused
+  if (!$self->{"tcp_econnrefused"} &&
+      $! == ECONNREFUSED) {
+    $ret = 1;  # "Connection refused" means reachable
+  }
   $self->{"fh"}->close();
   return $ret;
 }
@@ -488,13 +514,12 @@ sub tcp_connect
 
     my $patience = &time() + $timeout;
 
-    require POSIX;
     my ($child);
     $? = 0;
     # Wait up to the timeout
     # And clean off the zombie
     do {
-      $child = waitpid($pid, &POSIX::WNOHANG);
+      $child = waitpid($pid, &WNOHANG());
       $! = $? >> 8;
       $@ = $!;
       select(undef, undef, undef, 0.1);
@@ -712,6 +737,11 @@ sub ping_syn
   my $ip = shift;
   my $start_time = shift;
   my $stop_time = shift;
+
+  if ($syn_forking) {
+    return $self->ping_syn_fork($host, $ip, $start_time, $stop_time);
+  }
+
   my $fh = FileHandle->new();
   my $saddr = sockaddr_in($self->{"port_num"}, $ip);
 
@@ -761,7 +791,59 @@ sub ping_syn
   }
   vec($self->{"wbits"}, $fh->fileno, 1) = 1;
 
-  1;
+  return 1;
+}
+
+sub ping_syn_fork {
+  my ($self, $host, $ip, $start_time, $stop_time) = @_;
+
+  # Buggy Winsock API doesn't allow nonblocking connect.
+  # Hence, if our OS is Windows, we need to create a separate
+  # process to do the blocking connect attempt.
+  my $pid = fork();
+  if (defined $pid) {
+    if ($pid) {
+      # Parent process
+      my $entry = [ $host, $ip, $pid, $start_time, $stop_time ];
+      $self->{"syn"}->{$pid} = $entry;
+      if ($self->{"stop_time"} < $stop_time) {
+        $self->{"stop_time"} = $stop_time;
+      }
+    } else {
+      # Child process
+      my $saddr = sockaddr_in($self->{"port_num"}, $ip);
+
+      # Create TCP socket
+      if (!socket ($self->{"fh"}, PF_INET, SOCK_STREAM, $self->{"proto_num"})) {
+        croak("tcp socket error - $!");
+      }
+
+      if (defined $self->{"local_addr"} &&
+          !CORE::bind($self->{"fh"}, sockaddr_in(0, $self->{"local_addr"}))) {
+        croak("tcp bind error - $!");
+      }
+
+      if ($self->{'device'}) {
+        setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
+          or croak("error binding to device $self->{'device'} $!");
+      }
+
+      $!=0;
+      # Try to connect (could take a long time)
+      connect($self->{"fh"}, $saddr);
+      # Notify parent of connect error status
+      my $err = $!+0;
+      my $wrstr = "$$ $err";
+      # Force to 10 chars including \n
+      $wrstr .= " "x(9 - length $wrstr). "\n";
+      syswrite($self->{"fork_wr"}, $wrstr);
+      exit;
+    }
+  } else {
+    # fork() failed?
+    die "fork: $!";
+  }
+  return 1;
 }
 
 # Description: Wait for TCP ACK from host specified
@@ -772,6 +854,10 @@ sub ack
   my $self = shift;
 
   if ($self->{"proto"} eq "syn") {
+    if ($syn_forking) {
+      my @answer = $self->ack_unfork(shift);
+      return wantarray ? @answer : $answer[0];
+    }
     my $wbits = "";
     my $stop_time = 0;
     if (my $host = shift) {
@@ -833,7 +919,13 @@ sub ack
             read($entry->[2],$char,1);
             # Store the excuse why the connection failed.
             $self->{"bad"}->{$entry->[0]} = $!;
-
+            if (!$self->{"tcp_econnrefused"} &&
+                $! == ECONNREFUSED) {
+              # "Connection refused" means reachable
+              return wantarray ?
+                ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]))
+                : $entry->[0];
+            }
             # Try another socket...
           }
         } else {
@@ -855,8 +947,75 @@ sub ack
         $wbits = "";
       }
     }
-    return ();
   }
+  return ();
+}
+
+sub ack_unfork {
+  my $self = shift;
+  my $stop_time = $self->{"stop_time"};
+  if (my $host = shift) {
+    # Host passed as arg
+    warn "Cannot specify host for ack on win32\n";
+  }
+
+  my $rbits = "";
+  my $timeout;
+  #use Data::Dumper;
+  #print STDERR Dumper $self->{syn};
+  if (keys %{ $self->{"syn"} }) {
+    # Scan all hosts that are left
+    vec($rbits, fileno($self->{"fork_rd"}), 1) = 1;
+    $timeout = $stop_time - &time();
+  } else {
+    # No hosts left to wait for
+    $timeout = 0;
+  }
+
+  if ($timeout > 0) {
+    if (my $nfound = select((my $rout=$rbits), undef, undef, $timeout)) {
+      # Done waiting for one of the ACKs
+      if (!sysread($self->{"fork_rd"}, $_, 10)) {
+        # Socket closed, which means all children are done.
+        return ();
+      }
+      my ($pid, $how) = split;
+      if ($pid) {
+        # Flush the zombie
+        waitpid($pid, 0);
+        if (my $entry = $self->{"syn"}->{$pid}) {
+          # Connection attempt to remote host is done
+          delete $self->{"syn"}->{$pid};
+          if (!$how || # If there was no error connecting
+              (!$self->{"tcp_econnrefused"} &&
+               $how == ECONNREFUSED)) {  # "Connection refused" means reachable
+            return ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]));
+          }
+        } else {
+          # Should never happen
+          die "Unknown ping from pid [$pid]";
+        }
+      } else {
+        die "Empty response from status socket?";
+      }
+    } elsif (defined $nfound) {
+      # Timed out waiting for ACK status
+    } else {
+      # Weird error occurred with select()
+      warn("select: $!");
+    }
+  }
+  if (my @synners = keys %{ $self->{"syn"} }) {
+    # Kill all the synners
+    kill 9, @synners;
+    foreach my $pid (@synners) {
+      # Wait for the deaths to finish
+      # Then flush off the zombie
+      waitpid($pid, 0);
+    }
+  }
+  $self->{"syn"} = {};
+  return ();
 }
 
 # Description:  Close the connection.
@@ -882,7 +1041,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.20 2002/10/14 19:58:16 rob Exp $
+$Id: Ping.pm,v 1.29 2002/10/17 21:45:49 rob Exp $
 
 =head1 SYNOPSIS
 
@@ -989,9 +1148,6 @@ ACK packets, use the ack() method as explained below.  Use the
 "syn" protocol instead the "tcp" protocol to determine reachability
 of multiple destinations simultaneously by sending parallel TCP
 SYN packets.  It will not block while testing each remote host.
-It may also be used as a service check to ensure a remote port is
-open and listening, whereas the regular "tcp" ping will report
-that the remote host is reachable even if the port is down.
 demo/fping is provided in this distribution to demonstrate the
 "syn" protocol as an example.
 This protocol does not require any special privileges.
@@ -1045,6 +1201,27 @@ endpoint that the original destination endpoint was sent to.
 This only affects udp and icmp protocol pings.
 
 This is enabled by default.
+
+=item $p->tcp_service_check( { 0 | 1 } );
+
+Set whether or not the tcp connect behavior should enforce
+remote service availability as well as reachability.  Normally,
+if the remote server reported ECONNREFUSED, it must have been
+reachable because of the status packet that it reported.
+With this option enabled, the full three-way tcp handshake
+must have been established successfully before it will
+claim it is reachable.  NOTE:  It still does nothing more
+than connect and disconnect.  It does not speak any protocol
+(i.e., HTTP or FTP) to ensure the remote server is sane in
+any way.  The remote server CPU could be grinding to a halt
+and unresponsive to any clients connecting, but if the kernel
+throws the ACK packet, it is considered alive anyway.  To
+really determine if the server is responding well would be
+application specific and is beyond the scope of Net::Ping.
+
+This only affects "tcp" and "syn" protocols.
+
+This is disabled by default.
 
 =item $p->hires( { 0 | 1 } );
 

@@ -1,6 +1,15 @@
 CHANGES
 -------
 
+2.22  Oct 17 16:00 2002
+	- Add $p->tcp_service_check() method to enforce
+	  remote tcp service availability checking.
+	- Changed default behavior of "syn" protocol to
+	  disabled tcp_service_check instead of enabled.
+	- Win32 compatibility changes ("syn" protocol).
+	- Increase timeouts for tests in case client or
+	  server network(s) are busy.
+
 2.21  Oct 14 12:00 2002
 	- Preserve/restore ALRM settings for tcp mode pings.
 	  Spot by d@niel-berlin.de (Daniel Berlin)
@@ -12,6 +21,7 @@ CHANGES
 	  (SYN/ACK) feature of the "syn" protocol.
 	- Add demo/fping script as a "syn" demonstration.
 	- Compatibiliy patches for cygwin.
+	  Spot by frazee.23@osu.edu (Joseph Frazee)
 
 2.20  Jun 20 10:00 2002
 	- Perl 5.8.0 compatibility stuff.

@@ -1,7 +1,7 @@
 NAME
     Net::Ping - check a remote host for reachability
 
-    $Id: Ping.pm,v 1.20 2002/10/14 19:58:16 rob Exp $
+    $Id: Ping.pm,v 1.29 2002/10/17 21:45:49 rob Exp $
 
 SYNOPSIS
         use Net::Ping;
@@ -104,11 +104,9 @@ DESCRIPTION
     explained below. Use the "syn" protocol instead the "tcp" protocol to
     determine reachability of multiple destinations simultaneously by
     sending parallel TCP SYN packets. It will not block while testing each
-    remote host. It may also be used as a service check to ensure a remote
-    port is open and listening, whereas the regular "tcp" ping will report
-    that the remote host is reachable even if the port is down. demo/fping
-    is provided in this distribution to demonstrate the "syn" protocol as an
-    example. This protocol does not require any special privileges.
+    remote host. demo/fping is provided in this distribution to demonstrate
+    the "syn" protocol as an example. This protocol does not require any
+    special privileges.
 
   Functions
 
@@ -156,6 +154,25 @@ DESCRIPTION
         icmp protocol pings.
 
         This is enabled by default.
+
+    $p->tcp_service_check( { 0 | 1 } );
+        Set whether or not the tcp connect behavior should enforce remote
+        service availability as well as reachability. Normally, if the
+        remote server reported ECONNREFUSED, it must have been reachable
+        because of the status packet that it reported. With this option
+        enabled, the full three-way tcp handshake must have been established
+        successfully before it will claim it is reachable. NOTE: It still
+        does nothing more than connect and disconnect. It does not speak any
+        protocol (i.e., HTTP or FTP) to ensure the remote server is sane in
+        any way. The remote server CPU could be grinding to a halt and
+        unresponsive to any clients connecting, but if the kernel throws the
+        ACK packet, it is considered alive anyway. To really determine if
+        the server is responding well would be application specific and is
+        beyond the scope of Net::Ping.
+
+        This only affects "tcp" and "syn" protocols.
+
+        This is disabled by default.
 
     $p->hires( { 0 | 1 } );
         Causes this module to use Time::HiRes module, allowing milliseconds

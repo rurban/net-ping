@@ -54,7 +54,7 @@ plan tests => ((keys %{ $webs }) * 2 + 3);
 # Everything loaded fine
 ok 1;
 
-my $p = new Net::Ping "syn";
+my $p = new Net::Ping "syn", 10;
 
 # new() worked?
 ok !!$p;

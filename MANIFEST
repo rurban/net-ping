@@ -16,3 +16,4 @@ t/200_ping_tcp.t
 t/250_ping_hires.t
 t/300_ping_stream.t
 t/400_ping_syn.t
+t/450_service.t
