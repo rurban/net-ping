@@ -11,4 +11,5 @@ t/120_udp_inst.t
 t/130_tcp_inst.t
 t/140_stream_inst.t
 t/200_ping_tcp.t
+t/250_ping_hires.t
 t/300_ping_stream.t
