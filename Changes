@@ -1,6 +1,15 @@
 CHANGES
 -------
 
+2.28  Jan 23 18:00 2003
+	- No new features.  Bug fixes only.
+	- Fixed ICMP_STRUCT to work on Big Endian platforms.
+	  Thanks to danb@thelittlemacshop.com (Dan Buettner)
+	  for testing on Mac OS X 10.2.3 and many others
+	  for testing on Big Endian boxes.
+	- Not do binmode(). Causes more problems than helps.
+	- Perl 5.004 compatibility fixes (Spot by Honza).
+
 2.27  Jan 15 23:00 2003
 	- Patch by slebedev@iwl.net (Sergey Lebedev):
 	- 1) Fixed response packet parsing offsets in ping_icmp.

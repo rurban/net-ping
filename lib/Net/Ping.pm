@@ -15,7 +15,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.27";
+$VERSION = "2.28";
 
 # Constants
 
@@ -129,7 +129,6 @@ sub new
       croak("Can't get icmp protocol by name");
     $self->{"pid"} = $$ & 0xffff;           # Save lower 16 bits of pid
     $self->{"fh"} = FileHandle->new();
-    binmode($self->{"fh"});
     socket($self->{"fh"}, PF_INET, SOCK_RAW, $self->{"proto_num"}) ||
       croak("icmp socket error - $!");
     if ($self->{'device'}) {
@@ -329,7 +328,7 @@ sub ping_external {
 
 use constant ICMP_ECHOREPLY => 0; # ICMP packet types
 use constant ICMP_ECHO      => 8;
-use constant ICMP_STRUCT    => "C2 v3 A";  # Structure of a minimal ICMP packet
+use constant ICMP_STRUCT    => "C2 n3 A";  # Structure of a minimal ICMP packet
 use constant SUBCODE        => 0; # No ICMP subcode for ECHO and ECHOREPLY
 use constant ICMP_FLAGS     => 0; # No special flags for send or recv
 use constant ICMP_PORT      => 0; # No port with ICMP
@@ -371,12 +370,9 @@ sub ping_icmp
               $checksum, $self->{"pid"}, $self->{"seq"}, $self->{"data"});
   $len_msg = length($msg);
   $saddr = sockaddr_in(ICMP_PORT, $ip);
-  if (defined($self->{"from_ip"})){
-    $self->{"from_ip"} = undef;}
-  if (defined($self->{"from_type"})){
-    $self->{"from_type"} = undef;}
-  if (defined($self->{"from_subcode"})){
-    $self->{"from_subcode"} = undef;}
+  $self->{"from_ip"} = undef;
+  $self->{"from_type"} = undef;
+  $self->{"from_subcode"} = undef;
   send($self->{"fh"}, $msg, ICMP_FLAGS, $saddr); # Send the message
 
   $rbits = "";
@@ -400,20 +396,21 @@ sub ping_icmp
       ($from_port, $from_ip) = sockaddr_in($from_saddr);
       ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, 20, 2));
       if ($from_type == ICMP_ECHOREPLY){
-        ($from_pid, $from_seq) = unpack("S3", substr($recv_msg, 24, 4));}
-      else {
-        ($from_pid, $from_seq) = unpack("S3", substr($recv_msg, 52, 4));}
+        ($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 24, 4));
+      } else {
+        ($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 52, 4));
+      }
       $self->{"from_ip"} = $from_ip;
       $self->{"from_type"} = $from_type;
       $self->{"from_subcode"} = $from_subcode;
       if (($from_pid == $self->{"pid"}) && # Does the packet check out?
           ($from_seq == $self->{"seq"})) {
         if ($from_type == ICMP_ECHOREPLY){
-          $ret = 1;}
-        $done = 1;}
-    }
-    else                                # Oops, timed out
-    {
+          $ret = 1;
+        }
+        $done = 1;
+      }
+    } else {     # Oops, timed out
       $done = 1;
     }
   }
@@ -444,7 +441,7 @@ sub checksum
   $len_msg = length($msg);
   $num_short = int($len_msg / 2);
   $chk = 0;
-  foreach $short (unpack("S$num_short", $msg))
+  foreach $short (unpack("n$num_short", $msg))
   {
     $chk += $short;
   }                                           # Add the odd byte in
@@ -674,7 +671,7 @@ sub tcp_echo
       if(select($rin, $rout, undef, ($time + $timeout) - &time())) {
 
         if($rout && vec($rout,$self->{"fh"}->fileno(),1)) {
-          my $num = syswrite($self->{"fh"}, $wrstr);
+          my $num = syswrite($self->{"fh"}, $wrstr, length $wrstr);
           if($num) {
             # If it was a partial write, update and try again.
             $wrstr = substr($wrstr,$num);
@@ -929,7 +926,7 @@ sub ping_syn_fork {
       my $wrstr = "$$ $err";
       # Force to 16 chars including \n
       $wrstr .= " "x(15 - length $wrstr). "\n";
-      syswrite($self->{"fork_wr"}, $wrstr);
+      syswrite($self->{"fork_wr"}, $wrstr, length $wrstr);
       exit;
     }
   } else {
@@ -1198,7 +1195,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.64 2003/01/16 23:44:48 rob Exp $
+$Id: Ping.pm,v 1.69 2003/01/23 17:21:29 rob Exp $
 
 =head1 SYNOPSIS
 
