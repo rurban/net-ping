@@ -1,6 +1,21 @@
 CHANGES
 -------
 
+2.07  Nov 28 13:00 2001
+	- Compatibility changes
+	- Works with UNIX and Win32 OS
+	- Works with Perl 5.005 5.6.x 5.7.x 5.8.x
+	- Applied several patches from distro
+	- External protocol added thanks to
+	  colinm@cpan.org (Colin McMillen)
+	- Stream protocol added thanks to
+	  bronson@trestle.com (Scott Bronson)
+
+2.06  Nov 19 12:00 2001
+	- Added Net-Ping.spec for RPM to easily
+	  utilize using "rpm -ta Net-Ping*tar.gz"
+	- Moved Copyright section to perldoc
+
 2.05  Nov 18 20:00 2001
 	- Added test suite
 
