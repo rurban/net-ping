@@ -2,7 +2,7 @@
 %define perlmod Net-Ping
 Summary:	%{perlmod} perl module
 Name:		perl-%{perlmod}
-Version:	2.15
+Version:	2.16
 Release:	1
 License:	GPL
 Group:		Development/Languages/Perl
@@ -11,8 +11,8 @@ Packager:	Rob Brown <bbb@cpan.org>
 Prefix: 	/usr
 BuildRequires:	perl
 Requires:	perl
-BuildRoot:	/var/tmp/%{name}-%{version}-root
-Provides:	%{perlmod}
+BuildRoot:	/var/tmp/%{name}-%{version}-root-%(id -u -n)
+Provides:	%{perlmod} = %{version}
 
 %description
 %{perlmod} Perl Module
@@ -28,13 +28,15 @@ make test
 %install
 rm -rf $RPM_BUILD_ROOT
 make PREFIX=$RPM_BUILD_ROOT%{prefix} install
-find $RPM_BUILD_ROOT%{prefix} -type f -print | perl -p -e "s@^$RPM_BUILD_ROOT(.*)@\$1*@g" | grep -v perllocal.pod | grep -v packlist > %{name}-filelist
+[ -x /usr/lib/rpm/brp-compress ] && /usr/lib/rpm/brp-compress
+find $RPM_BUILD_ROOT%{prefix} -type f -print | perl -ne "print if s@^$RPM_BUILD_ROOT@@g && !/perllocal|packlist/" > %{name}-filelist
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files -f %{name}-filelist
 %defattr(-,root,root)
+%doc README
 
 %post
 

@@ -5,6 +5,7 @@ Net-Ping.spec.PL
 Net-Ping.spec
 README
 CHANGES
+INSTALL
 t/100_load.t
 t/110_icmp_inst.t
 t/120_udp_inst.t
