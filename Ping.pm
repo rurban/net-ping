@@ -1,19 +1,6 @@
 package Net::Ping;
 
-# Author:   mose@ns.ccsn.edu (Russell Mosemann)
-#
-# Authors of the original pingecho():
-#           karrer@bernina.ethz.ch (Andreas Karrer)
-#           pmarquess@bfsec.bt.co.uk (Paul Marquess)
-#
-# Ported by Rob Brown (rob@roobik.com) so ping_tcp()
-# would work with most default systems.
-#
-# Copyright (c) 2001 Rob Brown. All rights reserved.
-#
-# Copyright (c) 1996 Russell Mosemann.  All rights reserved.  This
-# program is free software; you may redistribute it and/or modify it
-# under the same terms as Perl itself.
+# $Id: Ping.pm,v 1.5 2001/11/19 09:44:18 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -28,7 +15,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = 2.05;
+$VERSION = 2.06;
 
 # Constants
 
@@ -412,6 +399,8 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
+$Id: Ping.pm,v 1.5 2001/11/19 09:44:18 rob Exp $
+
 =head1 SYNOPSIS
 
     use Net::Ping;
@@ -429,8 +418,10 @@ Net::Ping - check a remote host for reachability
         sleep(1);
     }
     $p->close();
-    
+
     $p = Net::Ping->new("tcp", 2);
+    # Try connecting to the www port instead of the echo port
+    $p->{port_num} = getservbyname("http", "tcp");
     while ($stop_time > time())
     {
         print "$host not reachable ", scalar(localtime()), "\n"
@@ -438,7 +429,7 @@ Net::Ping - check a remote host for reachability
         sleep(300);
     }
     undef($p);
-    
+
     # For backward compatibility
     print "$host is alive.\n" if pingecho($host);
 
@@ -552,5 +543,27 @@ Because of a lack of anything better, this module uses its own
 routines to pack and unpack ICMP packets.  It would be better for a
 separate module to be written which understands all of the different
 kinds of ICMP packets.
+
+=head1 AUTHOR(S)
+
+  Original pingecho():
+    Andreas Karrer (karrer@bernina.ethz.ch)
+    Paul Marquess (pmarquess@bfsec.bt.co.uk)
+
+  Net::Ping base code:
+    Russell Mosemann (mose@ns.ccsn.edu)
+
+  Compatibility porting so ping_tcp()
+  can work with most remote systems:
+    Rob Brown (rob@roobik.com)
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001 Rob Brown. All rights reserved.
+
+Copyright (c) 1996 Russell Mosemann.  All rights reserved.
+
+This program is free software; you may redistribute it and/or
+modify it under the same terms as Perl itself.
 
 =cut

@@ -3,6 +3,13 @@ use ExtUtils::MakeMaker;
 WriteMakefile
   NAME => "Net::Ping",
   VERSION_FROM => "Ping.pm",
+#  depend => {
+#    #'Net-Ping.spec' => q[Net-Ping.spec.PL Ping.pm],
+#    dist => 'Net-Ping.spec',
+#  },
+  clean => {
+    FILES => q[*.bak *~ *.spec],
+  },
   dist => {
     COMPRESS => "gzip -9",
   };
@@ -21,7 +28,7 @@ sub postamble {
 pm_to_blib: README
 
 README: Ping.pm
-\tpod2text Ping.pm > README
+	pod2text Ping.pm > README
   ^;
 }
 

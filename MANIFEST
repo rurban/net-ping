@@ -1,6 +1,8 @@
 MANIFEST
 Makefile.PL
 Ping.pm
+Net-Ping.spec.PL
+Net-Ping.spec
 README
 CHANGES
 t/100_load.t

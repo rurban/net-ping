@@ -7,7 +7,7 @@
 
 use Test;
 use Net::Ping;
-plan tests => 12;
+plan tests => 13;
 
 # Everything loaded fine
 ok 1;
@@ -23,10 +23,13 @@ ok $p -> ping("localhost");
 # Change to use the more common web port.
 # This will pull from /etc/services on UNIX.
 # (Make sure getservbyname works in scalar context.)
-ok $p -> {port_num} = getservbyname("http", "tcp");
+ok ($p -> {port_num} = (getservbyname("http", "tcp") || 80));
 
 # Test localhost on the web port
 ok $p -> ping("localhost");
+
+# Hopefully this is not a routeable host
+ok !$p -> ping("10.12.14.16");
 
 # Test a few remote servers
 # Hopefully they are up when the tests are run.
