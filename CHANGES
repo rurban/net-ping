@@ -1,6 +1,10 @@
 CHANGES
 -------
 
+2.14  Apr 01 14:00 2002
+	- Added reverse lookup feature.
+	  e@arix.com (Erick Calder)
+
 2.13  Apr 01 14:00 2002
 	- Added ping time measuring feature.
 	  e@arix.com (Erick Calder)

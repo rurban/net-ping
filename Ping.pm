@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.25 2002/04/01 22:59:14 rob Exp $
+# $Id: Ping.pm,v 1.27 2002/04/02 02:01:21 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -10,13 +10,13 @@ use vars qw(@ISA @EXPORT $VERSION
             $def_timeout $def_proto $max_datasize $pingstring $hires);
 use FileHandle;
 use Socket qw( SOCK_DGRAM SOCK_STREAM SOCK_RAW PF_INET
-               inet_aton sockaddr_in );
+               inet_aton inet_ntoa sockaddr_in );
 use Carp;
 use Errno qw(ECONNREFUSED);
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.13";
+$VERSION = "2.14";
 
 # Constants
 
@@ -186,7 +186,8 @@ sub ping
       $timeout,           # Seconds after which ping times out
       ) = @_;
   my ($ip,                # Packed IP number of $host
-      $ret                # The return value
+      $ret,               # The return value
+      $ping_time,         # When ping began
       );
 
   croak("Usage: \$p->ping(\$host [, \$timeout])") unless @_ == 2 || @_ == 3;
@@ -197,13 +198,26 @@ sub ping
   return(undef) unless defined($ip);      # Does host exist?
 
   # Dispatch to the appropriate routine.
-  return $self->ping_external($ip, $timeout) if $self->{"proto"} eq "external";
-  return $self->ping_udp($ip, $timeout)      if $self->{"proto"} eq "udp";
-  return $self->ping_icmp($ip, $timeout)     if $self->{"proto"} eq "icmp";
-  return $self->ping_tcp($ip, $timeout)      if $self->{"proto"} eq "tcp";
-  return $self->ping_stream($ip, $timeout)   if $self->{"proto"} eq "stream";
+  $ping_time = &time();
+  if ($self->{"proto"} eq "external") {
+    $ret = $self->ping_external($ip, $timeout);
+  }
+  elsif ($self->{"proto"} eq "udp") {
+    $ret = $self->ping_udp($ip, $timeout);
+  }
+  elsif ($self->{"proto"} eq "icmp") {
+    $ret = $self->ping_icmp($ip, $timeout);
+  }
+  elsif ($self->{"proto"} eq "tcp") {
+    $ret = $self->ping_tcp($ip, $timeout);
+  }
+  elsif ($self->{"proto"} eq "stream") {
+    $ret = $self->ping_stream($ip, $timeout);
+  } else {
+    croak("Unknown protocol \"$self->{proto}\" in ping()");
+  }
 
-  croak("Unknown protocol \"$self->{proto}\" in ping()");
+  return wantarray ? ($ret, &time() - $ping_time, inet_ntoa($ip)) : $ret;
 }
 
 # Uses Net::Ping::External to do an external ping.
@@ -215,10 +229,7 @@ sub ping_external {
 
   eval { require Net::Ping::External; }
     or croak('Protocol "external" not supported on your system: Net::Ping::External not found');
-  my $ping_time = &time();
-  my $ret = Net::Ping::External::ping(ip => $ip, timeout => $timeout);
-  $ping_time = &time() - $ping_time;
-  return wantarray ? ($ret, $ping_time) : $ret;
+  return Net::Ping::External::ping(ip => $ip, timeout => $timeout);
 }
 
 use constant ICMP_ECHOREPLY => 0; # ICMP packet types
@@ -242,7 +253,6 @@ sub ping_icmp
       $rbits,             # Read bits, filehandles for reading
       $nfound,            # Number of ready filehandles found
       $finish_time,       # Time ping should be finished
-      $ping_time,         # Time it takes for ping to complete
       $done,              # set to 1 when we are done
       $ret,               # Return value
       $recv_msg,          # Received message including IP header
@@ -272,13 +282,12 @@ sub ping_icmp
   vec($rbits, $self->{"fh"}->fileno(), 1) = 1;
   $ret = 0;
   $done = 0;
-  $ping_time = $timeout;
-  $finish_time = &time() + $timeout;       # Must be done by this time
+  $finish_time = &time() + $timeout;      # Must be done by this time
   while (!$done && $timeout > 0)          # Keep trying if we have time
   {
     $nfound = select($rbits, undef, undef, $timeout); # Wait for packet
-    $timeout = $finish_time - &time();   # Get remaining time
-    if (!defined($nfound))              # Hmm, a strange error
+    $timeout = $finish_time - &time();    # Get remaining time
+    if (!defined($nfound))                # Hmm, a strange error
     {
       $ret = undef;
       $done = 1;
@@ -307,8 +316,7 @@ sub ping_icmp
       $done = 1;
     }
   }
-  $ping_time -= $timeout;
-  return wantarray ? ($ret, $ping_time) : $ret;
+  return $ret;
 }
 
 # Description:  Do a checksum on the message.  Basically sum all of
@@ -354,15 +362,15 @@ sub ping_tcp
       $ip,                # Packed IP number of the host
       $timeout            # Seconds after which ping times out
       ) = @_;
-  my ($ret, $duration     # The return values
+  my ($ret                # The return value
       );
 
   $@ = ""; $! = 0;
-  ($ret,$duration) = $self -> tcp_connect( $ip, $timeout);
+  $ret = $self -> tcp_connect( $ip, $timeout);
   $ret = 1 if $! == ECONNREFUSED  # Connection refused
     || $@ =~ /Unknown Error/i;    # Special Win32 response?
   $self->{"fh"}->close();
-  return wantarray ? ($ret, $duration) : $ret;
+  return $ret;
 }
 
 sub tcp_connect
@@ -394,8 +402,6 @@ sub tcp_connect
     $ret;
   };
 
-  my $ping_time = &time();
-
   if ($^O =~ /Win32/i) {
 
     # Buggy Winsock API doesn't allow us to use alarm() calls.
@@ -426,7 +432,7 @@ sub tcp_connect
 
     &{ $do_socket }();
 
-    my $patience = $ping_time + $timeout;
+    my $patience = &time() + $timeout;
 
     require POSIX;
     my ($child);
@@ -464,8 +470,8 @@ sub tcp_connect
     &{ $do_connect }();
     alarm(0);
   }
-  $ping_time = &time() - $ping_time;
-  return wantarray ? ($ret, $ping_time) : $ret;
+
+  return $ret;
 }
 
 # This writes the given string to the socket and then reads it
@@ -520,7 +526,7 @@ sub tcp_echo
     } until &time() > ($time + $timeout) || defined($ret);
 EOM
 
-  return wantarray ? ($ret, &time() - $time) : $ret;
+  return $ret;
 }
 
 
@@ -664,7 +670,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.25 2002/04/01 22:59:14 rob Exp $
+$Id: Ping.pm,v 1.27 2002/04/02 02:01:21 rob Exp $
 
 =head1 SYNOPSIS
 
@@ -699,9 +705,9 @@ $Id: Ping.pm,v 1.25 2002/04/01 22:59:14 rob Exp $
     # High precision syntax (requires Time::HiRes)
     $p = Net::Ping->new();
     $p->hires();
-    ($ret, $duration) = $p->ping($host, 5.5);
-    printf("$host is alive (packet return time: %.2f ms)\n", 1000 * $duration)
-               if $ret;
+    ($ret, $duration, $ip) = $p->ping($host, 5.5);
+    printf("$host [ip: $ip] is alive (packet return time: %.2f ms)\n", 1000 * $duration)
+      if $ret;
     $p->close();
 
     # For backward compatibility
