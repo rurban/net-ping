@@ -1,7 +1,7 @@
 NAME
     Net::Ping - check a remote host for reachability
 
-    $Id: Ping.pm,v 1.6 2002/06/19 15:23:48 rob Exp $
+    $Id: Ping.pm,v 1.20 2002/10/14 19:58:16 rob Exp $
 
 SYNOPSIS
         use Net::Ping;
@@ -32,6 +32,16 @@ SYNOPSIS
         }
         undef($p);
 
+        # Like tcp protocol, but with many hosts
+        $p = Net::Ping->new("syn");
+        $p->{port_num} = getservbyname("http", "tcp");
+        foreach $host (@host_array) {
+          $p->ping($host);
+        }
+        while (($host,$rtt,$ip) = $p->ack) {
+          print "HOST: $host [$ip] ACKed in $rtt seconds.\n";
+        }
+
         # High precision syntax (requires Time::HiRes)
         $p = Net::Ping->new();
         $p->hires();
@@ -49,10 +59,10 @@ DESCRIPTION
     variable number of hosts may be pinged multiple times and then the
     connection is closed.
 
-    You may choose one of four different protocols to use for the ping. The
-    "udp" protocol is the default. Note that a live remote host may still
+    You may choose one of six different protocols to use for the ping. The
+    "tcp" protocol is the default. Note that a live remote host may still
     fail to be pingable by one or more of these protocols. For example,
-    www.microsoft.com is generally alive but not pingable.
+    www.microsoft.com is generally alive but not "icmp" pingable.
 
     With the "tcp" protocol the ping() method attempts to establish a
     connection to the remote host's echo port. If the connection is
@@ -77,18 +87,36 @@ DESCRIPTION
     or that the program be setuid to root.
 
     If the "external" protocol is specified, the ping() method attempts to
-    use the `Net::Ping::External' module to ping the remote host.
-    `Net::Ping::External' interfaces with your system's default `ping'
+    use the "Net::Ping::External" module to ping the remote host.
+    "Net::Ping::External" interfaces with your system's default "ping"
     utility to perform the ping, and generally produces relatively accurate
-    results. If `Net::Ping::External' if not installed on your system,
+    results. If "Net::Ping::External" if not installed on your system,
     specifying the "external" protocol will result in an error.
+
+    If the "syn" protocol is specified, the ping() method will only send a
+    TCP SYN packet to the remote host then immediately return. If the syn
+    packet was sent successfully, it will return a true value, otherwise it
+    will return false. NOTE: Unlike the other protocols, the return value
+    does NOT determine if the remote host is alive or not since the full TCP
+    three-way handshake may not have completed yet. The remote host is only
+    considered reachable if it receives a TCP ACK within the timeout
+    specifed. To begin waiting for the ACK packets, use the ack() method as
+    explained below. Use the "syn" protocol instead the "tcp" protocol to
+    determine reachability of multiple destinations simultaneously by
+    sending parallel TCP SYN packets. It will not block while testing each
+    remote host. It may also be used as a service check to ensure a remote
+    port is open and listening, whereas the regular "tcp" ping will report
+    that the remote host is reachable even if the port is down. demo/fping
+    is provided in this distribution to demonstrate the "syn" protocol as an
+    example. This protocol does not require any special privileges.
 
   Functions
 
-    Net::Ping->new([$proto [, $def_timeout [, $bytes]]]);
+    Net::Ping->new([$proto [, $def_timeout [, $bytes [, $device ]]]]);
         Create a new ping object. All of the parameters are optional. $proto
         specifies the protocol to use when doing a ping. The current choices
-        are "tcp", "udp" or "icmp". The default is "udp".
+        are "tcp", "udp", "icmp", "stream", "syn", or "external". The
+        default is "tcp".
 
         If a default timeout ($def_timeout) in seconds is provided, it is
         used when a timeout is not given to the ping() method (below). The
@@ -101,6 +129,10 @@ DESCRIPTION
         default) number of data bytes is 1 if the protocol is "udp" and 0
         otherwise. The maximum number of data bytes that can be specified is
         1024.
+
+        If $device is given, this device is used to bind the source endpoint
+        before sending the ping packet. I beleive this only works with
+        superuser privileges and with udp and icmp protocols at this time.
 
     $p->ping($host [, $timeout]);
         Ping the remote host and wait for a response. $host can be either
@@ -145,13 +177,29 @@ DESCRIPTION
         that object.
 
     $p->open($host);
-        When you are using the stream protocol, this call pre-opens the tcp
-        socket. It's only necessary to do this if you want to provide a
+        When you are using the "stream" protocol, this call pre-opens the
+        tcp socket. It's only necessary to do this if you want to provide a
         different timeout when creating the connection, or remove the
         overhead of establishing the connection from the first ping. If you
-        don't call `open()', the connection is automatically opened the
-        first time `ping()' is called. This call simply does nothing if you
+        don't call "open()", the connection is automatically opened the
+        first time "ping()" is called. This call simply does nothing if you
         are using any protocol other than stream.
+
+    $p->ack( [ $host ] );
+        When using the "syn" protocol, use this method to determine the
+        reachability of the remote host. This method is meant to be called
+        up to as many times as ping() was called. Each call returns the host
+        (as passed to ping()) that came back with the TCP ACK. The order in
+        which the hosts are returned may not necessarily be the same order
+        in which they were SYN queued using the ping() method. If the
+        timeout is reached before the TCP ACK is received, or if the remote
+        host is not listening on the port attempted, then the TCP connection
+        will not be established and ack() will return undef. In list
+        context, the host, the ack time, and the dotted ip string will be
+        returned instead of just the host. If the optional $host argument is
+        specified, the return value will be partaining to that host only.
+        This call simply does nothing if you are using any protocol other
+        than syn.
 
     $p->close();
         Close the network connection for this ping object. The network
@@ -204,7 +252,7 @@ NOTES
 INSTALL
     The latest source tree is available via cvs:
 
-      cvs -z3 -q -d :pserver:anonymous@cvs.roobik.com.:/usr/local/cvsroot/freeware co Net-Ping
+      cvs -z3 -q -d :pserver:anonymous@cvs.roobik.com.:/usr/local/cvsroot/freeware checkout Net-Ping
       cd Net-Ping
 
     The tarball can be created as follows:

@@ -78,7 +78,6 @@ Source:         http://www.cpan.org/modules/by-module/%{class}/%{real_name}-%{ve
 Url:            http://search.cpan.org/search?dist=%{real_name}
 Vendor:         Rob Brown <bbb@cpan.org>
 BuildRequires:  perl
-BuildArch:      noarch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-buildroot-%(id -u -n)
 Requires:       perl = %{perlver}
 Provides:       %{real_name} = %{version}
@@ -109,10 +108,13 @@ rm -rf $HERE
 
 %files
 %defattr(-,root,root)
-%doc Changes README
+%doc Changes README demo
 %{_prefix}
 
 %changelog
+* Mon Oct 14 2002 Rob Brown <bbb@cpan.org>
+- Version 2.21
+- Add demo/fping to the doc
 * Mon Jun 03 2002 Rob Brown <bbb@cpan.org>
 - Version 2.19
 * Mon May 16 2002 Rob Brown <bbb@cpan.org>

@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.6 2002/06/19 15:23:48 rob Exp $
+# $Id: Ping.pm,v 1.20 2002/10/14 19:58:16 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -9,14 +9,14 @@ use strict;
 use vars qw(@ISA @EXPORT $VERSION
             $def_timeout $def_proto $max_datasize $pingstring $hires $source_verify);
 use FileHandle;
-use Socket qw( SOCK_DGRAM SOCK_STREAM SOCK_RAW PF_INET
+use Socket qw( SOCK_DGRAM SOCK_STREAM SOCK_RAW PF_INET SOL_SOCKET
                inet_aton inet_ntoa sockaddr_in );
 use Carp;
-use POSIX qw(ECONNREFUSED);
+use POSIX qw(ECONNREFUSED EINPROGRESS);
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.20";
+$VERSION = "2.21";
 
 # Constants
 
@@ -32,6 +32,10 @@ if ($^O =~ /Win32/i) {
   # Your vendor has not defined POSIX macro ECONNREFUSED
   *ECONNREFUSED = sub {10061;}; # "Unknown Error" Special Win32 Response?
 };
+
+# h2ph "asm/socket.h"
+# require "asm/socket.ph";
+sub SO_BINDTODEVICE {25;}
 
 # Description:  The pingecho() subroutine is provided for backward
 # compatibility with the original Net::Ping.  It accepts a host
@@ -61,7 +65,8 @@ sub new
   my ($this,
       $proto,             # Optional protocol to use for pinging
       $timeout,           # Optional timeout in seconds
-      $data_size          # Optional additional bytes of data
+      $data_size,         # Optional additional bytes of data
+      $device,            # Optional device to use
       ) = @_;
   my  $class = ref($this) || $this;
   my  $self = {};
@@ -72,14 +77,16 @@ sub new
   bless($self, $class);
 
   $proto = $def_proto unless $proto;          # Determine the protocol
-  croak('Protocol for ping must be "icmp", "udp", "tcp", "stream", or "external"')
-    unless $proto =~ m/^(icmp|udp|tcp|stream|external)$/;
+  croak('Protocol for ping must be "icmp", "udp", "tcp", "syn", "stream", or "external"')
+    unless $proto =~ m/^(icmp|udp|tcp|syn|stream|external)$/;
   $self->{"proto"} = $proto;
 
   $timeout = $def_timeout unless $timeout;    # Determine the timeout
   croak("Default timeout for ping must be greater than 0 seconds")
     if $timeout <= 0;
   $self->{"timeout"} = $timeout;
+
+  $self->{"device"} = $device;
 
   $min_datasize = ($proto eq "udp") ? 1 : 0;  # Determine data size
   $data_size = $min_datasize unless defined($data_size) && $proto ne "tcp";
@@ -107,16 +114,24 @@ sub new
     socket($self->{"fh"}, PF_INET, SOCK_DGRAM,
            $self->{"proto_num"}) ||
              croak("udp socket error - $!");
+    if ($self->{'device'}) {
+      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
+        or croak "error binding to device $self->{'device'} $!";
+    }
   }
   elsif ($self->{"proto"} eq "icmp")
   {
-    croak("icmp ping requires root privilege") if ($> and $^O ne 'VMS');
+    croak("icmp ping requires root privilege") if ($> and $^O ne 'VMS' and $^O ne 'cygwin');
     $self->{"proto_num"} = (getprotobyname('icmp'))[2] ||
       croak("Can't get icmp protocol by name");
     $self->{"pid"} = $$ & 0xffff;           # Save lower 16 bits of pid
     $self->{"fh"} = FileHandle->new();
     socket($self->{"fh"}, PF_INET, SOCK_RAW, $self->{"proto_num"}) ||
       croak("icmp socket error - $!");
+    if ($self->{'device'}) {
+      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
+        or croak "error binding to device $self->{'device'} $!";
+    }
   }
   elsif ($self->{"proto"} eq "tcp" || $self->{"proto"} eq "stream")
   {
@@ -125,6 +140,21 @@ sub new
     $self->{"port_num"} = (getservbyname('echo', 'tcp'))[2] ||
       croak("Can't get tcp echo port by name");
     $self->{"fh"} = FileHandle->new();
+  }
+  elsif ($self->{"proto"} eq "syn")
+  {
+    $self->{"proto_num"} = (getprotobyname('tcp'))[2] ||
+      croak("Can't get tcp protocol by name");
+    $self->{"port_num"} = (getservbyname('echo', 'tcp'))[2] ||
+      croak("Can't get tcp echo port by name");
+    $self->{"syn"} = {};
+    $self->{"bad"} = {};
+    $self->{"wbits"} = "";
+    $self->{"stop_time"} = 0;
+  }
+  elsif ($self->{"proto"} eq "external")
+  {
+    # No preliminary work needs to be done.
   }
 
   return($self);
@@ -231,6 +261,9 @@ sub ping
   }
   elsif ($self->{"proto"} eq "stream") {
     $ret = $self->ping_stream($ip, $timeout);
+  }
+  elsif ($self->{"proto"} eq "syn") {
+    $ret = $self->ping_syn($host, $ip, $ping_time, $ping_time+$timeout);
   } else {
     croak("Unknown protocol \"$self->{proto}\" in ping()");
   }
@@ -409,6 +442,10 @@ sub tcp_connect
         !CORE::bind($self->{"fh"}, sockaddr_in(0, $self->{"local_addr"}))) {
       croak("tcp bind error - $!");
     }
+    if ($self->{'device'}) {
+      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
+        or croak("error binding to device $self->{'device'} $!");
+    }
   };
   my $do_connect = sub {
     eval {
@@ -481,11 +518,11 @@ sub tcp_connect
 
     &{ $do_socket }();
 
-    $SIG{'ALRM'} = sub { die "Timed out!"; };
-    alarm($timeout);        # Interrupt connect() if we have to
+    local $SIG{'ALRM'} = sub { die "Timed out!"; };
+    my $old = alarm($timeout);   # Interrupt connect() if we have to
 
     &{ $do_connect }();
-    alarm(0);
+    alarm($old);
   }
 
   return $ret;
@@ -667,14 +704,174 @@ sub ping_udp
   return $ret;
 }
 
-# Description:  Close the connection unless we are using the tcp
-# protocol, since it will already be closed.
+# Description: Send a TCP SYN packet to host specified.
+sub ping_syn
+{
+  my $self = shift;
+  my $host = shift;
+  my $ip = shift;
+  my $start_time = shift;
+  my $stop_time = shift;
+  my $fh = FileHandle->new();
+  my $saddr = sockaddr_in($self->{"port_num"}, $ip);
+
+  # Create TCP socket
+  if (!socket ($fh, PF_INET, SOCK_STREAM, $self->{"proto_num"})) {
+    croak("tcp socket error - $!");
+  }
+
+  if (defined $self->{"local_addr"} &&
+      !CORE::bind($fh, sockaddr_in(0, $self->{"local_addr"}))) {
+    croak("tcp bind error - $!");
+  }
+
+  if ($self->{'device'}) {
+    setsockopt($fh, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
+      or croak("error binding to device $self->{'device'} $!");
+  }
+
+  # Set O_NONBLOCK property on filehandle
+  if (my $flags = fcntl($fh, F_GETFL, 0)) {
+    fcntl($fh, F_SETFL, $flags | O_NONBLOCK);
+  } else {
+    croak("fcntl F_GETFL: $!");
+  }
+
+  # Attempt the non-blocking connect
+  # by just sending the TCP SYN packet
+  if (connect($fh, $saddr)) {
+    # Non-blocking, yet still connected?
+    # Must have connected very quickly.
+    # Can this ever really happen?
+  }
+  else {
+    # Error occurred connecting.
+    # Hopefully the connection is just still in progress.
+    if ($! != EINPROGRESS) {
+      # If not, then it really is something bad.
+      $self->{"bad"}->{$host} = $!;
+      return undef;
+    }
+  }
+
+  my $entry = [ $host, $ip, $fh, $start_time, $stop_time ];
+  $self->{"syn"}->{$fh->fileno} = $entry;
+  if ($self->{"stop_time"} < $stop_time) {
+    $self->{"stop_time"} = $stop_time;
+  }
+  vec($self->{"wbits"}, $fh->fileno, 1) = 1;
+
+  1;
+}
+
+# Description: Wait for TCP ACK from host specified
+# from ping_syn above.  If no host is specified, wait
+# for TCP ACK from any of the hosts in the SYN queue.
+sub ack
+{
+  my $self = shift;
+
+  if ($self->{"proto"} eq "syn") {
+    my $wbits = "";
+    my $stop_time = 0;
+    if (my $host = shift) {
+      # Host passed as arg
+      if (exists $self->{"bad"}->{$host}) {
+        return ();
+      }
+      my $host_fd = undef;
+      while (my ($fd, $entry) = each %{ $self->{"syn"} }) {
+        if ($entry->[0] eq $host) {
+          $host_fd = $fd;
+          $stop_time = $entry->[4]
+            || croak("Corrupted SYN entry for [$host]");
+          last;
+        }
+      }
+      croak("ack called on [$host] without calling ping first!")
+        unless defined $host_fd;
+      vec($wbits, $host_fd, 1) = 1;
+    } else {
+      # No $host passed so scan all hosts
+      # Use the latest stop_time
+      $stop_time = $self->{"stop_time"};
+      # Use all the bits
+      $wbits = $self->{"wbits"};
+    }
+
+    while ($wbits !~ /^\0*$/) {
+      my $timeout = $stop_time - &time();
+      # Force a minimum of 1 ms timeout.
+      $timeout = 0.001 if $timeout <= .001;
+      if (my $nfound = select(undef, (my $wout=$wbits), undef, $timeout)) {
+        # Done waiting for one of the ACKs
+        my $fd = 0;
+        # Determine which one
+        while (length $wout &&
+               !vec($wout, $fd, 1)) {
+          $fd++;
+        }
+        if (my $entry = $self->{"syn"}->{$fd}) {
+          if (getpeername($entry->[2])) {
+            # Connection established to remote host
+            delete $self->{"syn"}->{$fd};
+            vec($self->{"wbits"}, $fd, 1) = 0;
+            return wantarray ?
+              ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]))
+              : $entry->[0];
+          } else {
+            # TCP ACK will never come from this host
+            # because there was an error connecting.
+
+            # Wipe it from future scanning.
+            delete $self->{"syn"}->{$fd};
+            vec($self->{"wbits"}, $fd, 1) = 0;
+            vec($wbits, $fd, 1) = 0;
+
+            # This should set $! to the correct error.
+            my $char;
+            read($entry->[2],$char,1);
+            # Store the excuse why the connection failed.
+            $self->{"bad"}->{$entry->[0]} = $!;
+
+            # Try another socket...
+          }
+        } else {
+          warn "Corrupted SYN entry: unknown fd [$fd] ready!";
+          vec($wbits, $fd, 1) = 0;
+          vec($self->{"wbits"}, $fd, 1) = 0;
+        }
+      } elsif (defined $nfound) {
+        # Timed out waiting for ACK
+        while (my ($fd, $entry) = each %{ $self->{"syn"} }) {
+          $self->{"bad"}->{$entry->[0]} = "Timed out";
+        }
+        $self->{"syn"} = {};
+        $wbits = "";
+      } else {
+        # Weird error occurred with select()
+        warn("select: $!");
+        $self->{"syn"} = {};
+        $wbits = "";
+      }
+    }
+    return ();
+  }
+}
+
+# Description:  Close the connection.
 
 sub close
 {
   my ($self) = @_;
 
-  $self->{"fh"}->close() unless $self->{"proto"} eq "tcp";
+  if ($self->{"proto"} eq "syn") {
+    delete $self->{"syn"};
+  } elsif ($self->{"proto"} eq "tcp") {
+    # The connection will already be closed
+  } else {
+    $self->{"fh"}->close();
+  }
 }
 
 
@@ -685,7 +882,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.6 2002/06/19 15:23:48 rob Exp $
+$Id: Ping.pm,v 1.20 2002/10/14 19:58:16 rob Exp $
 
 =head1 SYNOPSIS
 
@@ -717,6 +914,16 @@ $Id: Ping.pm,v 1.6 2002/06/19 15:23:48 rob Exp $
     }
     undef($p);
 
+    # Like tcp protocol, but with many hosts
+    $p = Net::Ping->new("syn");
+    $p->{port_num} = getservbyname("http", "tcp");
+    foreach $host (@host_array) {
+      $p->ping($host);
+    }
+    while (($host,$rtt,$ip) = $p->ack) {
+      print "HOST: $host [$ip] ACKed in $rtt seconds.\n";
+    }
+
     # High precision syntax (requires Time::HiRes)
     $p = Net::Ping->new();
     $p->hires();
@@ -735,10 +942,10 @@ hosts on a network.  A ping object is first created with optional
 parameters, a variable number of hosts may be pinged multiple
 times and then the connection is closed.
 
-You may choose one of four different protocols to use for the
-ping. The "udp" protocol is the default. Note that a live remote host
+You may choose one of six different protocols to use for the
+ping. The "tcp" protocol is the default. Note that a live remote host
 may still fail to be pingable by one or more of these protocols. For
-example, www.microsoft.com is generally alive but not pingable.
+example, www.microsoft.com is generally alive but not "icmp" pingable.
 
 With the "tcp" protocol the ping() method attempts to establish a
 connection to the remote host's echo port.  If the connection is
@@ -770,15 +977,35 @@ utility to perform the ping, and generally produces relatively
 accurate results. If C<Net::Ping::External> if not installed on your
 system, specifying the "external" protocol will result in an error.
 
+If the "syn" protocol is specified, the ping() method will only
+send a TCP SYN packet to the remote host then immediately return.
+If the syn packet was sent successfully, it will return a true value,
+otherwise it will return false.  NOTE: Unlike the other protocols,
+the return value does NOT determine if the remote host is alive or
+not since the full TCP three-way handshake may not have completed
+yet.  The remote host is only considered reachable if it receives
+a TCP ACK within the timeout specifed.  To begin waiting for the
+ACK packets, use the ack() method as explained below.  Use the
+"syn" protocol instead the "tcp" protocol to determine reachability
+of multiple destinations simultaneously by sending parallel TCP
+SYN packets.  It will not block while testing each remote host.
+It may also be used as a service check to ensure a remote port is
+open and listening, whereas the regular "tcp" ping will report
+that the remote host is reachable even if the port is down.
+demo/fping is provided in this distribution to demonstrate the
+"syn" protocol as an example.
+This protocol does not require any special privileges.
+
 =head2 Functions
 
 =over 4
 
-=item Net::Ping->new([$proto [, $def_timeout [, $bytes]]]);
+=item Net::Ping->new([$proto [, $def_timeout [, $bytes [, $device ]]]]);
 
 Create a new ping object.  All of the parameters are optional.  $proto
 specifies the protocol to use when doing a ping.  The current choices
-are "tcp", "udp" or "icmp".  The default is "udp".
+are "tcp", "udp", "icmp", "stream", "syn", or "external".
+The default is "tcp".
 
 If a default timeout ($def_timeout) in seconds is provided, it is used
 when a timeout is not given to the ping() method (below).  The timeout
@@ -790,6 +1017,10 @@ data bytes is ignored if the protocol is "tcp".  The minimum (and
 default) number of data bytes is 1 if the protocol is "udp" and 0
 otherwise.  The maximum number of data bytes that can be specified is
 1024.
+
+If $device is given, this device is used to bind the source endpoint
+before sending the ping packet.  I beleive this only works with
+superuser privileges and with udp and icmp protocols at this time.
 
 =item $p->ping($host [, $timeout]);
 
@@ -838,7 +1069,7 @@ object.
 
 =item $p->open($host);
 
-When you are using the stream protocol, this call pre-opens the
+When you are using the "stream" protocol, this call pre-opens the
 tcp socket.  It's only necessary to do this if you want to
 provide a different timeout when creating the connection, or
 remove the overhead of establishing the connection from the
@@ -846,6 +1077,25 @@ first ping.  If you don't call C<open()>, the connection is
 automatically opened the first time C<ping()> is called.
 This call simply does nothing if you are using any protocol other
 than stream.
+
+=item $p->ack( [ $host ] );
+
+When using the "syn" protocol, use this method to determine
+the reachability of the remote host.  This method is meant
+to be called up to as many times as ping() was called.  Each
+call returns the host (as passed to ping()) that came back
+with the TCP ACK.  The order in which the hosts are returned
+may not necessarily be the same order in which they were
+SYN queued using the ping() method.  If the timeout is
+reached before the TCP ACK is received, or if the remote
+host is not listening on the port attempted, then the TCP
+connection will not be established and ack() will return
+undef.  In list context, the host, the ack time, and the
+dotted ip string will be returned instead of just the host.
+If the optional $host argument is specified, the return
+value will be partaining to that host only.
+This call simply does nothing if you are using any protocol
+other than syn.
 
 =item $p->close();
 
@@ -905,7 +1155,7 @@ kinds of ICMP packets.
 
 The latest source tree is available via cvs:
 
-  cvs -z3 -q -d :pserver:anonymous@cvs.roobik.com.:/usr/local/cvsroot/freeware co Net-Ping
+  cvs -z3 -q -d :pserver:anonymous@cvs.roobik.com.:/usr/local/cvsroot/freeware checkout Net-Ping
   cd Net-Ping
 
 The tarball can be created as follows:
