@@ -1,6 +1,6 @@
 package Net::Ping;
 
-# $Id: Ping.pm,v 1.33 2002/10/19 05:02:43 rob Exp $
+# $Id: Ping.pm,v 1.40 2002/10/22 03:15:54 rob Exp $
 
 require 5.002;
 require Exporter;
@@ -17,7 +17,7 @@ use Carp;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
-$VERSION = "2.23";
+$VERSION = "2.24";
 
 # Constants
 
@@ -157,6 +157,8 @@ sub new
       $self->{"fork_wr"} = FileHandle->new();
       pipe($self->{"fork_rd"}, $self->{"fork_wr"});
       $self->{"fh"} = FileHandle->new();
+      $self->{"good"} = {};
+      $self->{"bad"} = {};
     } else {
       $self->{"wbits"} = "";
       $self->{"bad"} = {};
@@ -761,8 +763,11 @@ sub ping_syn
   }
 
   # Set O_NONBLOCK property on filehandle
-  if (my $flags = fcntl($fh, F_GETFL, 0)) {
-    fcntl($fh, F_SETFL, $flags | O_NONBLOCK);
+  my $flags = 0;
+  if (fcntl($fh, F_GETFL, $flags)) {
+    if (!fcntl($fh, F_SETFL, $flags | O_NONBLOCK)) {
+      croak("fcntl F_SETFL: $!");
+    }
   } else {
     croak("fcntl F_GETFL: $!");
   }
@@ -771,14 +776,20 @@ sub ping_syn
   # by just sending the TCP SYN packet
   if (connect($fh, $saddr)) {
     # Non-blocking, yet still connected?
-    # Must have connected very quickly.
-    # Can this ever really happen?
-  }
-  else {
+    # Must have connected very quickly,
+    # or else it wasn't very non-blocking.
+    #warn "WARNING: Nonblocking connect connected anyway? ($^O)";
+  } else {
     # Error occurred connecting.
-    # Hopefully the connection is just still in progress.
-    if ($! != EINPROGRESS) {
-      # If not, then it really is something bad.
+    if ($! == ECONNREFUSED) {
+      # "Connection refused" means it resolved okay.
+      # This is fine, just save the error and continue on.
+      $self->{"bad"}->{$host} = $!;
+    } elsif ($! == EINPROGRESS) {
+      # The connection is just still in progress.
+      # This is fine, just continue on.
+    } else {
+      # This must really be something bad.
       $self->{"bad"}->{$host} = $!;
       return undef;
     }
@@ -889,7 +900,7 @@ sub ack
     while ($wbits !~ /^\0*$/) {
       my $timeout = $stop_time - &time();
       # Force a minimum of 10 ms timeout.
-      $timeout = 0.01 if $timeout <= .01;
+      $timeout = 0.01 if $timeout <= 0.01;
       if (my $nfound = select(undef, (my $wout=$wbits), undef, $timeout)) {
         # Done waiting for one of the ACKs
         my $fd = 0;
@@ -899,21 +910,22 @@ sub ack
           $fd++;
         }
         if (my $entry = $self->{"syn"}->{$fd}) {
-          if (getpeername($entry->[2])) {
+          # Wipe it from future scanning.
+          delete $self->{"syn"}->{$fd};
+          vec($self->{"wbits"}, $fd, 1) = 0;
+          vec($wbits, $fd, 1) = 0;
+          if (!$self->{"tcp_econnrefused"} &&
+              $self->{"bad"}->{ $entry->[0] } &&
+              (($! = ECONNREFUSED)>0) &&
+              $self->{"bad"}->{ $entry->[0] } eq "$!") {
+            # "Connection refused" means reachable
+            # Good, continue
+          } elsif (getpeername($entry->[2])) {
             # Connection established to remote host
-            delete $self->{"syn"}->{$fd};
-            vec($self->{"wbits"}, $fd, 1) = 0;
-            return wantarray ?
-              ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]))
-              : $entry->[0];
+            # Good, continue
           } else {
             # TCP ACK will never come from this host
             # because there was an error connecting.
-
-            # Wipe it from future scanning.
-            delete $self->{"syn"}->{$fd};
-            vec($self->{"wbits"}, $fd, 1) = 0;
-            vec($wbits, $fd, 1) = 0;
 
             # This should set $! to the correct error.
             my $char;
@@ -923,12 +935,16 @@ sub ack
             if (!$self->{"tcp_econnrefused"} &&
                 $! == ECONNREFUSED) {
               # "Connection refused" means reachable
-              return wantarray ?
-                ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]))
-                : $entry->[0];
+              # Good, continue
+            } else {
+              # No good, try the next socket...
+              next;
             }
-            # Try another socket...
           }
+          # Everything passed okay, return the answer
+          return wantarray ?
+            ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]))
+            : $entry->[0];
         } else {
           warn "Corrupted SYN entry: unknown fd [$fd] ready!";
           vec($wbits, $fd, 1) = 0;
@@ -957,26 +973,34 @@ sub ack
 }
 
 sub ack_unfork {
-  my $self = shift;
+  my ($self,$host) = @_;
   my $stop_time = $self->{"stop_time"};
-  if (my $host = shift) {
+  if ($host) {
     # Host passed as arg
-    warn "Cannot specify host for ack on win32\n";
+    if (my $entry = $self->{"good"}->{$host}) {
+      delete $self->{"good"}->{$host};
+      return ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]));
+    }
   }
 
   my $rbits = "";
   my $timeout;
+
   if (keys %{ $self->{"syn"} }) {
     # Scan all hosts that are left
     vec($rbits, fileno($self->{"fork_rd"}), 1) = 1;
     $timeout = $stop_time - &time();
+    # Force a minimum of 10 ms timeout.
+    $timeout = 0.01 if $timeout < 0.01;
   } else {
     # No hosts left to wait for
     $timeout = 0;
   }
 
   if ($timeout > 0) {
-    if (my $nfound = select((my $rout=$rbits), undef, undef, $timeout)) {
+    my $nfound;
+    while ( keys %{ $self->{"syn"} } and
+           $nfound = select((my $rout=$rbits), undef, undef, $timeout)) {
       # Done waiting for one of the ACKs
       if (!sysread($self->{"fork_rd"}, $_, 10)) {
         # Socket closed, which means all children are done.
@@ -992,6 +1016,13 @@ sub ack_unfork {
           if (!$how || # If there was no error connecting
               (!$self->{"tcp_econnrefused"} &&
                $how == ECONNREFUSED)) {  # "Connection refused" means reachable
+            if ($host && $entry->[0] ne $host) {
+              # A good connection, but not the host we need.
+              # Move it from the "syn" hash to the "good" hash.
+              $self->{"good"}->{$entry->[0]} = $entry;
+              # And wait for the next winner
+              next;
+            }
             return ($entry->[0], &time() - $entry->[3], inet_ntoa($entry->[1]));
           }
         } else {
@@ -1001,7 +1032,8 @@ sub ack_unfork {
       } else {
         die "Empty response from status socket?";
       }
-    } elsif (defined $nfound) {
+    }
+    if (defined $nfound) {
       # Timed out waiting for ACK status
     } else {
       # Weird error occurred with select()
@@ -1051,7 +1083,7 @@ __END__
 
 Net::Ping - check a remote host for reachability
 
-$Id: Ping.pm,v 1.33 2002/10/19 05:02:43 rob Exp $
+$Id: Ping.pm,v 1.40 2002/10/22 03:15:54 rob Exp $
 
 =head1 SYNOPSIS
 

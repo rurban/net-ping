@@ -1,6 +1,16 @@
 CHANGES
 -------
 
+2.24  Oct 21 22:00 2002
+	- Compatibility fixes.
+	- Avoid using 127.1.1.1 and 127.2.2.2 because
+	  it breaks on some platforms (Irix).
+	- Handle condition where nonblocking tcp connects
+	  immediately connect on some platforms
+	  (solaris and freebsd) and to be SMP safer.
+	- Win32 $p->ack( $host ) method should now work.
+	- Add ack( $host ) test cases to test suite.
+
 2.23  Oct 18 22:00 2002
 	- Fix ack() fd "each" detection bug.
 	- Add nack() method for OO interface to the
