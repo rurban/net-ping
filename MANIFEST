@@ -1,3 +1,6 @@
-MANIFEST
+Changes
 Makefile.PL
+MANIFEST
 Ping.pm
+README
+test.pl
