@@ -1,6 +1,11 @@
 CHANGES
 -------
 
+2.32  Jul 30 21:30 2007
+	- new co-maintainer Steve Peters
+	- integrate assorted bleadperl fixes from the past four years
+		<http://rt.cpan.org/Public/Bug/Display.html?id=28348>
+
 2.31  Jun 28 14:00 2003
 	- Win32 Compatibility fixes.
 	  Patch by mhx-perl@gmx.net (Marcus Holland-Moritz)
