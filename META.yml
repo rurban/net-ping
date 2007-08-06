@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-Ping
-version:             2.32
+version:             2.33
 abstract:            check a remote host for reachability
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.36
