@@ -1,14 +1,11 @@
---- #YAML:1.0
-name:                Net-Ping
-version:             2.33
-abstract:            check a remote host for reachability
-license:             ~
-generated_by:        ExtUtils::MakeMaker version 6.36
-distribution_type:   module
-requires:     
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         Net-Ping
+version:      2.34
+version_from: lib/Net/Ping.pm
+installdirs:  perl
+requires:
     Test:                          0
-meta-spec:
-    url:     http://module-build.sourceforge.net/META-spec-v1.2.html
-    version: 1.2
-author:
-    - Steve Peters <steve@fisharerojo.org>
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.30
