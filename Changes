@@ -1,6 +1,10 @@
 CHANGES
 -------
 
+2.35  Feb 08 14:42 2008
+	- Patch in Perl change #33242 by Nicholas Clark 
+		<http://public.activestate.com/cgi-bin/perlbrowse/p/33242>
+
 2.34  Dec 19 08:51 2007
         - Release primarily to prevent problems with the Perl core in
 	  preparation for the Perl 5.10 release.  No real bug fixes, but
