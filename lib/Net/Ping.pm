@@ -781,7 +781,12 @@ sub ping_icmp
       $from_saddr = recv($self->{fh}, $recv_msg, 1500, ICMP_FLAGS);
       $recv_msg_len = length($recv_msg) - length($self->{data});
       ($from_port, $from_ip) = _unpack_sockaddr_in($from_saddr, $ip->{family});
-      ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, 20, 2));
+               # Looks like ICMP echo includes the header and ICMPv6 doesn't.
+               # IPv4 length($recv_msg) is 28 (20 header + 8 payload) while 
+               # IPv6 length is only 8.  $pyld = where the payload really 
+               # starts. 
+      my $pyld = ($ip->{family} == AF_INET) ? 20 : 0;
+      ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, $pyld, 2));
       if ($from_type == ICMP_TIMESTAMP_REPLY) {
         ($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 24, 4))
           if length $recv_msg >= 28;
@@ -2022,6 +2027,10 @@ Net::Ping - check a remote host for reachability
         sleep(1);
     }
     $p->close();
+
+    $p = Net::Ping->new("icmpv6");
+    $ip = "[fd00:dead:beef::4e]";
+    print "$ip is alive.\n" if $p->ping($ip);
 
     $p = Net::Ping->new("tcp", 2);
     # Try connecting to the www port instead of the echo port
