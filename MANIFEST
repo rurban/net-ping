@@ -19,3 +19,4 @@ t/450_service.t
 t/500_ping_icmp.t
 t/510_ping_udp.t
 META.yml                                 Module meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)
