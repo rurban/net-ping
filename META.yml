@@ -18,5 +18,7 @@ no_index:
     - t
     - inc
 requires:
-  Test: 0
-version: 2.39
+  Socket: 2.007
+  Test::More: 0
+  Time::HiRes: 0
+version: 2.40

@@ -32,10 +32,12 @@
       },
       "runtime" : {
          "requires" : {
-            "Test" : 0
+            "Socket" : "2.007",
+            "Test::More" : 0,
+            "Time::HiRes" : 0
          }
       }
    },
    "release_status" : "stable",
-   "version" : "2.39"
+   "version" : "2.40"
 }
