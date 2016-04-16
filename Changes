@@ -11,6 +11,9 @@ CHANGES
        - Added the following named arguments to new:
          gateway host port bind retrans pingstring source_verify econnrefused
          IPV6_USE_MIN_MTU IPV6_RECVPATHMTU IPV6_HOPLIMIT
+       - Added a dontfrag option, setting IP_DONTFRAG and on linux
+         also IP_MTU_DISCOVER to IP_PMTUDISC_DO. Note that is ignored if
+         Socket does not export IP_DONTFRAG.
        - Added the wakeonlan method
        - Improve argument default handling
        - Added missing documentation

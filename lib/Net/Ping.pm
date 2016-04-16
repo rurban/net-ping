@@ -21,7 +21,7 @@ use Time::HiRes;
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
 @EXPORT_OK = qw(wakeonlan);
-$VERSION = "2.49_03";
+$VERSION = "2.49_04";
 
 # Globals
 
@@ -110,7 +110,7 @@ sub new
   if (ref $proto eq 'HASH') { # support named args
     for my $k (qw(proto timeout data_size device tos ttl family
                   gateway host port bind retrans pingstring source_verify
-                  econnrefused
+                  econnrefused dontfrag
                   IPV6_USE_MIN_MTU IPV6_RECVPATHMTU IPV6_HOPLIMIT))
     {
       if (exists $proto->{$k}) {
@@ -208,32 +208,18 @@ sub new
     socket($self->{"fh"}, PF_INET, SOCK_DGRAM,
            $self->{"proto_num"}) ||
              croak("udp socket error - $!");
-    if ($self->{'device'}) {
-      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-        or croak "error binding to device $self->{'device'} $!";
-    }
-    if ($self->{'tos'}) {
-      setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS, pack("I*", $self->{'tos'}))
-        or croak "error configuring tos to $self->{'tos'} $!";
-    }
+    $self->_setopts();
   }
   elsif ($self->{"proto"} eq "icmp")
   {
-    croak("icmp ping requires root privilege") if ($> and $^O ne 'VMS' and $^O ne 'cygwin');
+    croak("icmp ping requires root privilege") if !_isroot();
     $self->{"proto_num"} = eval { (getprotobyname('icmp'))[2] } ||
       croak("Can't get icmp protocol by name");
     $self->{"pid"} = $$ & 0xffff;           # Save lower 16 bits of pid
     $self->{"fh"} = FileHandle->new();
     socket($self->{"fh"}, PF_INET, SOCK_RAW, $self->{"proto_num"}) ||
       croak("icmp socket error - $!");
-    if ($self->{'device'}) {
-      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-        or croak "error binding to device $self->{'device'} $!";
-    }
-    if ($self->{'tos'}) {
-      setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS, pack("I*", $self->{'tos'}))
-        or croak "error configuring tos to $self->{'tos'} $!";
-    }
+    $self->_setopts();
     if ($self->{'ttl'}) {
       setsockopt($self->{"fh"}, IPPROTO_IP, IP_TTL, pack("I*", $self->{'ttl'}))
         or croak "error configuring ttl to $self->{'ttl'} $!";
@@ -241,7 +227,7 @@ sub new
   }
   elsif ($self->{"proto"} eq "icmpv6")
   {
-    croak("icmpv6 ping requires root privilege") if ($> and $^O ne 'VMS' and $^O ne 'cygwin');
+    croak("icmpv6 ping requires root privilege") if !_isroot();
     croak("Wrong family $self->{family} for icmpv6 protocol")
       if $self->{"family"} and $self->{"family"} != $AF_INET6;
     $self->{"family"} = $AF_INET6;
@@ -251,10 +237,7 @@ sub new
     $self->{"fh"} = FileHandle->new();
     socket($self->{"fh"}, $AF_INET6, SOCK_RAW, $self->{"proto_num"}) ||
       croak("icmp socket error - $!");
-    if ($self->{'device'}) {
-      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-        or croak "error binding to device $self->{'device'} $!";
-    }
+    $self->_setopts();
     if ($self->{'gateway'}) {
       my $g = $self->{gateway};
       my $ip = _resolv($g)
@@ -646,6 +629,7 @@ use constant ICMP_STRUCT      => "C2 n3 A"; # Structure of a minimal ICMP packet
 use constant SUBCODE          => 0; # No ICMP subcode for ECHO and ECHOREPLY
 use constant ICMP_FLAGS       => 0; # No special flags for send or recv
 use constant ICMP_PORT        => 0; # No port with ICMP
+use constant IP_MTU_DISCOVER  => 10; # linux only
 
 sub ping_icmp
 {
@@ -685,16 +669,7 @@ sub ping_icmp
       !CORE::bind($self->{"fh"}, _pack_sockaddr_in(0, $self->{"local_addr"}))) {
     croak("icmp bind error - $!");
   }
-
-  if ($self->{'device'}) {
-    setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-      or croak "error binding to device $self->{'device'} $!";
-  }
-  if ($self->{'tos'}) {
-    my $proto = $ip->{family} == AF_INET ? IPPROTO_IP : $IPPROTO_IPV6;
-    setsockopt($self->{"fh"}, $proto, IP_TOS, pack("I*", $self->{'tos'}))
-      or croak "error configuring tos to $self->{'tos'} $!";
-  }
+  $self->_setopts();
 
   $self->{"seq"} = ($self->{"seq"} + 1) % 65536; # Increment sequence
   $checksum = 0;                          # No checksum for starters
@@ -871,14 +846,7 @@ sub tcp_connect
         !CORE::bind($self->{"fh"}, _pack_sockaddr_in(0, $self->{"local_addr"}))) {
       croak("tcp bind error - $!");
     }
-    if ($self->{'device'}) {
-      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-        or croak("error binding to device $self->{'device'} $!");
-    }
-    if ($self->{'tos'}) {
-      setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS, pack("I*", $self->{'tos'}))
-        or croak "error configuring tos to $self->{'tos'} $!";
-    }
+    $self->_setopts();
   };
   my $do_connect = sub {
     $self->{"ip"} = $ip->{"addr_in"};
@@ -1163,6 +1131,43 @@ sub open
   }
 }
 
+sub _dontfrag {
+  my $self = shift;
+  # bsd solaris
+  my $IP_DONTFRAG = eval { Socket::IP_DONTFRAG() };
+  if ($IP_DONTFRAG) {
+    my $i = 1;
+    setsockopt($self->{"fh"}, IPPROTO_IP, $IP_DONTFRAG, pack("I*", $i))
+      or croak "error configuring IP_DONTFRAG $!";
+    # Linux needs more: Path MTU Discovery as defined in RFC 1191
+    # For non SOCK_STREAM sockets it is the user's responsibility to packetize
+    # the data in MTU sized chunks and to do the retransmits if necessary.
+    # The kernel will reject packets that are bigger than the known path
+    # MTU if this flag is set (with EMSGSIZE).
+    if ($^O eq 'linux') {
+      my $i = 2; # IP_PMTUDISC_DO
+      setsockopt($self->{"fh"}, IPPROTO_IP, IP_MTU_DISCOVER, pack("I*", $i))
+        or croak "error configuring IP_MTU_DISCOVER $!";
+    }
+  }
+}
+
+# SO_BINDTODEVICE + IP_TOS
+sub _setopts {
+  my $self = shift;
+  if ($self->{'device'}) {
+    setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE, pack("Z*", $self->{'device'}))
+      or croak "error binding to device $self->{'device'} $!";
+  }
+  if ($self->{'tos'}) { # need to re-apply ToS (RT #6706)
+    setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS, pack("I*", $self->{'tos'}))
+      or croak "error applying tos to $self->{'tos'} $!";
+  }
+  if ($self->{'dontfrag'}) {
+    $self->_dontfrag;
+  }
+}  
+
 
 # Description:  Perform a udp echo ping.  Construct a message of
 # at least the one-byte sequence number and any additional data bytes.
@@ -1207,14 +1212,7 @@ sub ping_udp
     croak("udp bind error - $!");
   }
 
-  if ($self->{'device'}) {
-    setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-      or croak "error binding to device $self->{'device'} $!";
-  }
-  if ($self->{'tos'}) {
-    setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS(), pack("I*", $self->{'tos'}))
-      or croak "error configuring tos to $self->{'tos'} $!";
-  }
+  $self->_setopts();
 
   if ($self->{"connected"}) {
     if ($self->{"connected"} ne $saddr) {
@@ -1238,14 +1236,7 @@ sub ping_udp
     # This will disconnect from the old saddr.
     socket($self->{"fh"}, $ip->{"family"}, SOCK_DGRAM,
            $self->{"proto_num"});
-    if ($self->{'device'}) {
-      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-        or croak "error re-binding to device $self->{'device'} $!";
-    }
-    if ($self->{'tos'}) { # need to re-apply ToS (RT #6706)
-      setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS(), pack("I*", $self->{'tos'}))
-        or croak "error re-applying tos to $self->{'tos'} $!";
-    }
+    $self->_setopts();
   }
   # Connect the socket if it isn't already connected
   # to the right destination.
@@ -1355,14 +1346,7 @@ sub ping_syn
     croak("tcp bind error - $!");
   }
 
-  if ($self->{'device'}) {
-    setsockopt($fh, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-      or croak("error binding to device $self->{'device'} $!");
-  }
-  if ($self->{'tos'}) {
-    setsockopt($fh, IPPROTO_IP, IP_TOS, pack("I*", $self->{'tos'}))
-      or croak "error configuring tos to $self->{'tos'} $!";
-  }
+  $self->_setopts();
   # Set O_NONBLOCK property on filehandle
   $self->socket_blocking_mode($fh, 0);
 
@@ -1424,14 +1408,7 @@ sub ping_syn_fork {
         croak("tcp bind error - $!");
       }
 
-      if ($self->{'device'}) {
-        setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
-          or croak("error binding to device $self->{'device'} $!");
-      }
-      if ($self->{'tos'}) {
-        setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS, pack("I*", $self->{'tos'}))
-          or croak "error configuring tos to $self->{'tos'} $!";
-      }
+      $self->_setopts();
 
       $!=0;
       # Try to connect (could take a long time)
@@ -2056,7 +2033,7 @@ This protocol does not require any special privileges.
 
 =item Net::Ping->new([proto, timeout, bytes, device, tos, ttl, family,
                       host, port, bind, gateway, retrans, pingstring,
-                      source_verify econnrefused
+                      source_verify econnrefused dontfrag
                       IPV6_USE_MIN_MTU IPV6_RECVPATHMTU])
 
 Create a new ping object.  All of the parameters are optional and can
@@ -2109,6 +2086,12 @@ address.
 
 The C<retrans> argument the exponential backoff rate, default 1.2.
 It matches the $def_factor global.
+
+The C<dontfrag> argument sets the IP_DONTFRAG bit, but note that
+IP_DONTFRAG is not yet defined by Socket, and not available on many
+systems. Then it is ignored. On linux it also sets IP_MTU_DISCOVER to
+IP_PMTUDISC_DO but need we don't chunk oversized packets. You need to
+set $data_size manually.
 
 =item $p->ping($host [, $timeout [, $family]]);
 
