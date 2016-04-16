@@ -21,7 +21,7 @@ use Time::HiRes;
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
 @EXPORT_OK = qw(wakeonlan);
-$VERSION = "2.49_02";
+$VERSION = "2.49_03";
 
 # Globals
 
@@ -1238,6 +1238,14 @@ sub ping_udp
     # This will disconnect from the old saddr.
     socket($self->{"fh"}, $ip->{"family"}, SOCK_DGRAM,
            $self->{"proto_num"});
+    if ($self->{'device'}) {
+      setsockopt($self->{"fh"}, SOL_SOCKET, SO_BINDTODEVICE(), pack("Z*", $self->{'device'}))
+        or croak "error re-binding to device $self->{'device'} $!";
+    }
+    if ($self->{'tos'}) { # need to re-apply ToS (RT #6706)
+      setsockopt($self->{"fh"}, IPPROTO_IP, IP_TOS(), pack("I*", $self->{'tos'}))
+        or croak "error re-applying tos to $self->{'tos'} $!";
+    }
   }
   # Connect the socket if it isn't already connected
   # to the right destination.

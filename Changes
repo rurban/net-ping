@@ -15,6 +15,11 @@ CHANGES
        - Improve argument default handling
        - Added missing documentation
 
+       Bugfixes
+       - Reapply tos with ping_udp, when the address is changed.
+         RT #6706 (Torgny.Hofstedt@sevenlevels.se)
+         ditto re-bind to a device.
+
        Internals
        - $ip is now a hash with {addr, addr_in, family} not the addr_in packed IP.
        - added _resolv replacing inet_aton,
