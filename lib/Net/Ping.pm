@@ -21,7 +21,7 @@ use Time::HiRes;
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
 @EXPORT_OK = qw(wakeonlan);
-$VERSION = "2.49_01";
+$VERSION = "2.49_02";
 
 # Globals
 
@@ -109,7 +109,7 @@ sub new
   bless($self, $class);
   if (ref $proto eq 'HASH') { # support named args
     for my $k (qw(proto timeout data_size device tos ttl family
-                  gateway host bind retrans pingstring source_verify
+                  gateway host port bind retrans pingstring source_verify
                   econnrefused
                   IPV6_USE_MIN_MTU IPV6_RECVPATHMTU IPV6_HOPLIMIT))
     {
@@ -201,8 +201,9 @@ sub new
   {
     $self->{"proto_num"} = eval { (getprotobyname('udp'))[2] } ||
       croak("Can't udp protocol by name");
-    $self->{"port_num"} = (getservbyname('echo', 'udp'))[2] ||
-      croak("Can't get udp echo port by name");
+    $self->{"port_num"} = $self->{"port"}
+      || (getservbyname('echo', 'udp'))[2]
+      || croak("Can't get udp echo port by name");
     $self->{"fh"} = FileHandle->new();
     socket($self->{"fh"}, PF_INET, SOCK_DGRAM,
            $self->{"proto_num"}) ||
@@ -293,8 +294,9 @@ sub new
   {
     $self->{"proto_num"} = eval { (getprotobyname('tcp'))[2] } ||
       croak("Can't get tcp protocol by name");
-    $self->{"port_num"} = (getservbyname('echo', 'tcp'))[2] ||
-      croak("Can't get tcp echo port by name");
+    $self->{"port_num"} = $self->{"port"}
+      || (getservbyname('echo', 'tcp'))[2]
+      ||  croak("Can't get tcp echo port by name");
     $self->{"fh"} = FileHandle->new();
   }
   elsif ($self->{"proto"} eq "syn")
@@ -2045,8 +2047,9 @@ This protocol does not require any special privileges.
 =over 4
 
 =item Net::Ping->new([proto, timeout, bytes, device, tos, ttl, family,
-                      host, bind, gateway, retrans, pingstring, source_verify,
-                      econnrefused IPV6_USE_MIN_MTU IPV6_RECVPATHMTU])
+                      host, port, bind, gateway, retrans, pingstring,
+                      source_verify econnrefused
+                      IPV6_USE_MIN_MTU IPV6_RECVPATHMTU])
 
 Create a new ping object.  All of the parameters are optional and can
 be passed as hash ref.  All options besides the first 7 must be passed
@@ -2085,6 +2088,10 @@ Valid C<family> values for IPv6:
 
 The C<host> argument implicitly specifies the family if the family
 argument is not given.
+
+The C<port> argument is only valid for a udp, tcp or stream ping, and will not
+do what you think it does. ping returns true when we get a "Connection refused"!
+The default is the echo port.
 
 The C<bind> argument specifies the local_addr to bind to.
 By specifying a bind argument you don't need the bind method.
