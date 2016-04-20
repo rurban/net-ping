@@ -21,7 +21,7 @@ use Time::HiRes;
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
 @EXPORT_OK = qw(wakeonlan);
-$VERSION = "2.49_04";
+$VERSION = "2.49_05";
 
 # Globals
 
@@ -404,10 +404,17 @@ sub retrans
   $self->{"retrans"} = shift;
 }
 
+sub _IsAdminUser {
+  return unless $^O eq 'MSWin32' or $^O eq "cygwin";
+  return unless eval { require Win32 };
+  return unless defined &Win32::IsAdminUser;
+  return Win32::IsAdminUser();
+}
+
 sub _isroot {
   if (($> and $^O ne 'VMS' and $^O ne 'cygwin')
     or (($^O eq 'MSWin32' or $^O eq 'cygwin')
-        and !IsAdminUser())
+        and !_IsAdminUser())
     or ($^O eq 'VMS'
         and (`write sys\$output f\$privilege("SYSPRV")` =~ m/FALSE/))) {
       return 0;
