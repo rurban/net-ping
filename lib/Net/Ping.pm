@@ -21,7 +21,7 @@ use Time::HiRes;
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
 @EXPORT_OK = qw(wakeonlan);
-$VERSION = "2.49_05";
+$VERSION = "2.49_06";
 
 # Globals
 
@@ -1723,6 +1723,7 @@ sub wakeonlan {
   if (! defined $host) { $host = '255.255.255.255' }
   if (! defined $port || $port !~ /^\d+$/ ) { $port = 9 }
 
+  require IO::Socket::INET;
   my $sock = new IO::Socket::INET(Proto=>'udp') || return undef;
 
   my $ip_addr = inet_aton($host);
@@ -1732,7 +1733,7 @@ sub wakeonlan {
 
   setsockopt($sock, SOL_SOCKET, SO_BROADCAST, 1);
   send($sock, $packet, 0, $sock_addr);
-  close ($sock);
+  $sock->close;
 
   return 1;
 }
