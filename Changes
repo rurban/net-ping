@@ -1,5 +1,13 @@
 CHANGES
 -------
+2.51  Mon Oct 17 16:11:03 2016 +0200 (rurban)
+       version in cperl since 5.25.2c
+
+       Bugfixes
+       - Fixed missing _unpack_sockaddr_in family, which took AF_INET6 for
+         a AF_INET addr in t/500_ping_icmp.t and t/500_ping_icmp_ttl.t.
+         Use now a proper default.
+
 2.50  Sat Apr 16 11:50:20 2016 +0200 (rurban)
        version in cperl since 5.22.2c
 

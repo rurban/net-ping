@@ -17,4 +17,5 @@ WriteMakefile(
     dist            => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean           => { FILES => 'Net-Ping-*' },
     test            => { TESTS => 't/*.t t/zz_legacy/*.t', },
+    SIGN            => 1,
 );
