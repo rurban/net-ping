@@ -1,6 +1,6 @@
 CHANGES
 -------
-2.51  Mon Oct 17 16:11:03 2016 +0200 (rurban)
+2.51  Tue Oct 18 16:29:29 2016 +0200 (rurban)
        version in cperl since 5.25.2c
 
        Bugfixes
@@ -8,6 +8,10 @@ CHANGES
          a AF_INET addr in t/500_ping_icmp.t and t/500_ping_icmp_ttl.t.
          Use now a proper default.
        - Fixed _pack_sockaddr_in for a proper 2nd argument type, hash or packed address.
+       - Improved 500_ping_icmp.t to try sudo.
+       
+       Internals
+       - Converted all hash string keys to bare.
 
 2.50  Sat Apr 16 11:50:20 2016 +0200 (rurban)
        version in cperl since 5.22.2c
