@@ -1875,13 +1875,14 @@ sub _resolv {
 
 sub _pack_sockaddr_in($$) {
   my ($port,
-      $addr,
+      $ip,
       ) = @_;
 
-  if ($addr->{"family"} == AF_INET) {
-    return Socket::pack_sockaddr_in($port, $addr->{"addr_in"});
+  my $addr = ref($ip) eq "HASH" ? $ip->{"addr_in"} : $ip;
+  if (length($addr) <= 4 ) {
+    return Socket::pack_sockaddr_in($port, $addr);
   } else {
-    return Socket::pack_sockaddr_in6($port, $addr->{"addr_in"});
+    return Socket::pack_sockaddr_in6($port, $addr);
   }
 }
 
