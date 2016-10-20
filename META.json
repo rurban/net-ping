@@ -1,10 +1,15 @@
 {
    "abstract" : "check a remote host for reachability",
    "author" : [
-      "Steve Peters <steve@fisharerojo.org>"
+      "Steve Peters <steve@fisharerojo.org>",
+      "Reini Urban <rurban@cpan.org>",
+      "Matthew Musgrove <mr.muskrat@gmail.com>",
+      "Karl Williamson <khw@cpan.org>",
+      "Brian Fraser <fraserbn@gmail.com>",
+      "Mark Gardner <mjgardner@cpan.org>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.64, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "unknown"
    ],
@@ -39,5 +44,13 @@
       }
    },
    "release_status" : "stable",
-   "version" : "2.40"
+   "resources" : {
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/rurban/net-ping.git",
+         "web" : "https://github.com/rurban/net-ping"
+      }
+   },
+   "version" : "2.52",
+   "x_serialization_backend" : "JSON::PP version 2.27400"
 }
