@@ -7,6 +7,7 @@ MANIFEST			This list of files
 META.json
 META.yml			Module meta-data (added by MakeMaker)
 README.md
+README.md.PL
 t/000_load.t
 t/001_new.t
 t/010_pingecho.t
