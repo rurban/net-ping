@@ -1,5 +1,14 @@
 CHANGES
 -------
+2.53  Thu Oct 20 09:16:06  2016 +0200 (rurban)
+
+       Bugfixes
+       - Relax icmp tests on local firewalls, eg. as here on windows reported
+         by kmx. [RT #118441]
+
+       Internals
+       - Enhanced .travis.yml
+
 2.52  Tue Oct 18 16:29:29 2016 +0200 (rurban)
        version in cperl since 5.25.2c
 
