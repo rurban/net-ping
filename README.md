@@ -2,8 +2,6 @@
 
 Net-Ping - check a remote host for reachability
 
-[![Build Status](https://secure.travis-ci.org/mjgardner/net-ping.png)](http://travis-ci.org/mjgardner/net-ping)
-
 ## DOWNLOAD AND INSTALLATION
 
 Download a release from CPAN using your favorite tool, such as cpanm, or else

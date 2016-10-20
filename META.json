@@ -27,7 +27,8 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "0"
+            "ExtUtils::MakeMaker" : "0",
+            "Text::Template" : "1.10"
          }
       },
       "configure" : {

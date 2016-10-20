@@ -6,7 +6,8 @@ use Text::Template;
 my $meta = CPAN::Meta->load_file('META.json');
 my $template = Text::Template->new( TYPE => 'ARRAY', SOURCE => [<DATA>] );
 open my $readme, '>', shift or die $!;
-print $readme $template->fill_in(HASH => $meta->as_struct);
+$template->fill_in( HASH => $meta->as_struct, OUTPUT => $readme )
+    or die $Text::Template::ERROR;
 close $readme;
 
 __DATA__
