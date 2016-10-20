@@ -28,5 +28,5 @@ requires:
   Time::HiRes: '0'
 resources:
   repository: git://github.com/rurban/net-ping.git
-version: '2.52'
+version: '2.53'
 x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
