@@ -1,5 +1,12 @@
 CHANGES
 -------
+2.54  Thu Oct 20 09:16:06  2016 +0200 (rurban)
+
+       Bugfixes
+       - Fixed ping_external argument type, either packed ip or hostname.
+         [RT #113825]
+       - Fixed wrong skip message in t/020_external.t
+
 2.53  Thu Oct 20 09:16:06  2016 +0200 (rurban)
 
        Bugfixes
