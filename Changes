@@ -1,5 +1,9 @@
 CHANGES
 -------
+2.57  Wed Feb  1 19:34:03 CET 2017 (rurban)
+       Bugfixes
+        - Resigned with new gpg key
+
 2.56  Wed Jan 18 16:00:00  2017 -0700 (bbb)
        Bugfixes
         - Stabilize tests
