@@ -40,3 +40,16 @@ WriteMakefile(
         },
     },
 );
+
+package MY;
+
+sub depend {
+  "
+release : dist
+	git tag \$(VERSION)
+	cpan-upload \$(DISTVNAME).tar\$(SUFFIX)
+	git push
+	git push --tags
+"
+}
+
