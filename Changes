@@ -1,5 +1,10 @@
 CHANGES
 -------
+2.59_01  Mon Jun  5 12:38:37 CEST 2017 (rurban)
+       Bugfixes
+        - Try to handle Windows Socket::getnameinfo errors
+        - Improve some tests on missing network connections
+
 2.59  Tue Apr 18 08:46:48 2017 +0200 (rurban)
        Bugfixes
         - skip udp ping tests on more platforms: hpux, irix, aix.
