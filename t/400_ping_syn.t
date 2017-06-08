@@ -48,7 +48,7 @@ my %webs = (
 use Test::More;
 plan tests => 3 + 2 * keys %webs;
 
-BEGIN {use_ok('Net::Ping')};
+use_ok('Net::Ping');
 
 my $can_alarm = eval {alarm 0; 1;};
 
