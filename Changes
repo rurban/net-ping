@@ -1,11 +1,8 @@
 CHANGES
 -------
-2.59_02  Thu Jun  8 07:52:29 CEST 2017 (rurban)
+2.60  Mon Jun 12 20:14:13 CEST 2017 (rurban)
        Bugfixes
         - Fix t/400_ping_syn.t phases
-
-2.59_01  Mon Jun  5 12:38:37 CEST 2017 (rurban)
-       Bugfixes
         - Try to handle Windows Socket::getnameinfo errors
         - Improve some tests on missing network connections
 
