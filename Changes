@@ -1,5 +1,9 @@
 CHANGES
 -------
+2.61  Sat Jun 17 13:12:58 CEST 2017 (rurban)
+       Bugfixes
+        - Fix ping_udp for a started udp echo server (PR#5 by Stephan Loyd)
+
 2.60  Mon Jun 12 20:14:13 CEST 2017 (rurban)
        Bugfixes
         - Fix t/400_ping_syn.t phases
