@@ -135,7 +135,7 @@ sub new
     unless $proto =~ m/^(icmp|icmpv6|udp|tcp|syn|stream|external)$/;
   $self->{proto} = $proto;
 
-  $timeout = $def_timeout unless $timeout;    # Determine the timeout
+  $timeout = $def_timeout unless defined $timeout;    # Determine the timeout
   croak("Default timeout for ping must be greater than 0 seconds")
     if $timeout <= 0;
   $self->{timeout} = $timeout;
