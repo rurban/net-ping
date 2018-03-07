@@ -23,7 +23,7 @@ use Time::HiRes;
 @EXPORT_OK = qw(wakeonlan);
 # perl5 has a bogus version 2.62, where they claim they are still maintaining it,
 # and broke v5.6.
-$VERSION = "2.64";
+$VERSION = "2.65";
 
 # Globals
 
@@ -2444,7 +2444,7 @@ kinds of ICMP packets.
 
 The latest source tree is available via git:
 
-  git clone https://github.com/rurban/net-ping.git Net-Ping
+  git clone https://github.com/rurban/Net-Ping.git
   cd Net-Ping
 
 The tarball can be created as follows:
@@ -2458,10 +2458,12 @@ The latest Net::Ping releases are included in cperl and perl5.
 For a list of known issues, visit:
 
 L<https://rt.cpan.org/NoAuth/Bugs.html?Dist=Net-Ping>
+and
+L<https://github.com/rurban/Net-Ping/issues>
 
 To report a new bug, visit:
 
-L<https://rt.cpan.org/NoAuth/ReportBug.html?Queue=Net-Ping> (stale)
+L<https://github.com/rurban/Net-Ping/issues>
 
 =head1 AUTHORS
 
@@ -2491,7 +2493,7 @@ L<https://rt.cpan.org/NoAuth/ReportBug.html?Queue=Net-Ping> (stale)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2017, Reini Urban.  All rights reserved.
+Copyright (c) 2017-2018, Reini Urban.  All rights reserved.
 
 Copyright (c) 2016, cPanel Inc.  All rights reserved.
 
