@@ -7,12 +7,13 @@ use Config;
 
 use Test::More;
 BEGIN {
-  unless (eval "require Socket") {
+  unless (eval "require Socket;") {
     plan skip_all => 'no Socket';
   }
   unless ($Config{d_getpbyname}) {
     plan skip_all => 'no getprotobyname';
   }
+  my $is_devel = $ENV{PERL_CORE} or -d ".git" ? 1 : 0;
   # Note this code is considered anti-social in p5p and was removed in
   # their variant.
   # See http://nntp.perl.org/group/perl.perl5.porters/240707
@@ -23,13 +24,13 @@ BEGIN {
   if (!Net::Ping::_isroot()) {
     my $file = __FILE__;
     my $lib = $ENV{PERL_CORE} ? '-I../../lib' : '-Mblib';
+    if ($is_devel and $Config{ccflags} =~ /fsanitize=address/ and $^O eq 'linux') {
+      plan skip_all => 'asan leak detector';
+    }
     # -n prevents from asking for a password. rather fail then
     # A technical problem is with leak-detectors, like asan, which
     # require PERL_DESTRUCT_LEVEL=2 to be set in the root env.
-    if ($ENV{PERL_CORE} and $Config{ccflags} =~ /fsanitize=address/) {
-      plan skip_all => 'asan leak detector';
-    }
-    elsif ($ENV{PERL_CORE} and
+    if ($is_devel and
         system("sudo -n PERL_DESTRUCT_LEVEL=2 \"$^X\" $lib $file") == 0)
     {
       exit;
