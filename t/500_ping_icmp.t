@@ -26,7 +26,10 @@ BEGIN {
     # -n prevents from asking for a password. rather fail then
     # A technical problem is with leak-detectors, like asan, which
     # require PERL_DESTRUCT_LEVEL=2 to be set in the root env.
-    if ($ENV{PERL_CORE} and
+    if ($ENV{PERL_CORE} and $Config{ccflags} =~ /fsanitize=address/) {
+      plan skip_all => 'asan leak detector';
+    }
+    elsif ($ENV{PERL_CORE} and
         system("sudo -n PERL_DESTRUCT_LEVEL=2 \"$^X\" $lib $file") == 0)
     {
       exit;
