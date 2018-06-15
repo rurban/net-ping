@@ -645,11 +645,32 @@ use constant ICMP_ECHO        => 8;
 use constant ICMPv6_ECHO      => 128;
 use constant ICMP_TIME_EXCEEDED => 11; # ICMP packet types
 use constant ICMP_PARAMETER_PROBLEM => 12; # ICMP packet types
+use constant ICMP_TIMESTAMP   => 13;
+use constant ICMP_TIMESTAMP_REPLY => 14;
 use constant ICMP_STRUCT      => "C2 n3 A"; # Structure of a minimal ICMP packet
+use constant ICMP_TIMESTAMP_STRUCT => "C2 n3 N3"; # Structure of a minimal timestamp ICMP packet
 use constant SUBCODE          => 0; # No ICMP subcode for ECHO and ECHOREPLY
 use constant ICMP_FLAGS       => 0; # No special flags for send or recv
 use constant ICMP_PORT        => 0; # No port with ICMP
 use constant IP_MTU_DISCOVER  => 10; # linux only
+
+sub message_type
+{
+  my ($self,
+      $type
+      ) = @_;
+
+  croak "Setting message type only supported on 'icmp' protocol"
+    unless $self->{proto} eq 'icmp';
+
+  return $self->{message_type} || 'echo'
+    unless defined($type);
+
+  croak "Supported icmp message type are limited to 'echo' and 'timestamp': '$type' not supported"
+    unless $type =~ /^echo|timestamp$/i;
+
+  $self->{type} = lc($type);
+}
 
 sub ping_icmp
 {
@@ -671,6 +692,7 @@ sub ping_icmp
       $from_saddr,        # sockaddr_in of sender
       $from_port,         # Port packet was sent from
       $from_ip,           # Packed IP of sender
+      $timestamp_msg,     # ICMP timestamp message type
       $from_type,         # ICMP type
       $from_subcode,      # ICMP subcode
       $from_chk,          # ICMP packet checksum
@@ -681,6 +703,7 @@ sub ping_icmp
 
   $ip = $self->{host} if !defined $ip and $self->{host};
   $timeout = $self->{timeout} if !defined $timeout and $self->{timeout};
+  $timestamp_msg = $self->{type} && $self->{type} eq 'timestamp' ? 1 : 0;
 
   socket($self->{fh}, $ip->{family}, SOCK_RAW, $self->{proto_num}) ||
     croak("icmp socket error - $!");
@@ -694,8 +717,13 @@ sub ping_icmp
   $self->{seq} = ($self->{seq} + 1) % 65536; # Increment sequence
   $checksum = 0;                          # No checksum for starters
   if ($ip->{family} == AF_INET) {
-    $msg = pack(ICMP_STRUCT . $self->{data_size}, ICMP_ECHO, SUBCODE,
-                $checksum, $self->{pid}, $self->{seq}, $self->{data});
+    if ($timestamp_msg) {
+      $msg = pack(ICMP_TIMESTAMP_STRUCT, ICMP_TIMESTAMP, SUBCODE,
+                  $checksum, $self->{pid}, $self->{seq}, 0, 0, 0);
+    } else {
+      $msg = pack(ICMP_STRUCT . $self->{data_size}, ICMP_ECHO, SUBCODE,
+                  $checksum, $self->{pid}, $self->{seq}, $self->{data});
+    }
   } else {
                                           # how to get SRC
     my $pseudo_header = pack('a16a16Nnn', $ip->{addr_in}, $ip->{addr_in}, 8+length($self->{data}), 0, 0x003a);
@@ -705,8 +733,13 @@ sub ping_icmp
   }
   $checksum = Net::Ping->checksum($msg);
   if ($ip->{family} == AF_INET) {
-    $msg = pack(ICMP_STRUCT . $self->{data_size}, ICMP_ECHO, SUBCODE,
-                $checksum, $self->{pid}, $self->{seq}, $self->{data});
+    if ($timestamp_msg) {
+      $msg = pack(ICMP_TIMESTAMP_STRUCT, ICMP_TIMESTAMP, SUBCODE,
+                  $checksum, $self->{pid}, $self->{seq}, 0, 0, 0);
+    } else {
+      $msg = pack(ICMP_STRUCT . $self->{data_size}, ICMP_ECHO, SUBCODE,
+                  $checksum, $self->{pid}, $self->{seq}, $self->{data});
+    }
   } else {
     $msg = pack(ICMP_STRUCT . $self->{data_size}, ICMPv6_ECHO, SUBCODE,
                 $checksum, $self->{pid}, $self->{seq}, $self->{data});
@@ -740,7 +773,10 @@ sub ping_icmp
       $from_saddr = recv($self->{fh}, $recv_msg, 1500, ICMP_FLAGS);
       ($from_port, $from_ip) = _unpack_sockaddr_in($from_saddr, $ip->{family});
       ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, 20, 2));
-      if ($from_type == ICMP_ECHOREPLY) {
+      if ($from_type == ICMP_TIMESTAMP_REPLY) {
+        ($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 24, 4))
+          if length $recv_msg >= 28;
+      } elsif ($from_type == ICMP_ECHOREPLY) {
         #warn "ICMP_ECHOREPLY: ", $ip->{family}, " ",$recv_msg, ":", length($recv_msg);
         ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 24, 4))
           if ($ip->{family} == AF_INET && length $recv_msg == 28);
@@ -768,7 +804,10 @@ sub ping_icmp
       next if ($from_pid != $self->{pid});
       next if ($from_seq != $self->{seq});
       if (! $source_verify || ($self->ntop($from_ip) eq $self->ntop($ip))) { # Does the packet check out?
-        if (($from_type == ICMP_ECHOREPLY) || ($from_type == ICMPv6_ECHOREPLY)) {
+        if (!$timestamp_msg && (($from_type == ICMP_ECHOREPLY) || ($from_type == ICMPv6_ECHOREPLY))) {
+          $ret = 1;
+          $done = 1;
+        } elsif ($timestamp_msg && $from_type == ICMP_TIMESTAMP_REPLY) {
           $ret = 1;
           $done = 1;
         } elsif (($from_type == ICMP_UNREACHABLE) || ($from_type == ICMPv6_UNREACHABLE)) {
