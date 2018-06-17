@@ -669,7 +669,7 @@ sub message_type
   croak "Supported icmp message type are limited to 'echo' and 'timestamp': '$type' not supported"
     unless $type =~ /^echo|timestamp$/i;
 
-  $self->{type} = lc($type);
+  $self->{message_type} = lc($type);
 }
 
 sub ping_icmp
@@ -703,7 +703,7 @@ sub ping_icmp
 
   $ip = $self->{host} if !defined $ip and $self->{host};
   $timeout = $self->{timeout} if !defined $timeout and $self->{timeout};
-  $timestamp_msg = $self->{type} && $self->{type} eq 'timestamp' ? 1 : 0;
+  $timestamp_msg = $self->{message_type} && $self->{message_type} eq 'timestamp' ? 1 : 0;
 
   socket($self->{fh}, $ip->{family}, SOCK_RAW, $self->{proto_num}) ||
     croak("icmp socket error - $!");
@@ -2285,6 +2285,15 @@ object.
 
 The bind() call can be omitted when specifying the C<bind> option to
 new().
+
+=item $p->message_type([$ping_type]);
+X<message_type>
+
+When you are using the "icmp" protocol, this call permit to change the
+message type to 'echo' or 'timestamp' (only for IPv4, see RFC 792).
+
+Without argument, it returns the currently used icmp protocol message type.
+By default, it returns 'echo'.
 
 =item $p->open($host);
 X<open>
