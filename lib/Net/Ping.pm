@@ -23,7 +23,7 @@ use Time::HiRes;
 @EXPORT_OK = qw(wakeonlan);
 # perl5 has a bogus version 2.62, where they claim they are still maintaining it,
 # and broke v5.6.
-$VERSION = "2.66";
+$VERSION = "2.67";
 
 # Globals
 

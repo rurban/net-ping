@@ -1,6 +1,14 @@
 CHANGES
 -------
 
+2.67   (rurban)
+       Bugfixes
+       - Fixed non-core icmp ping test. PR #10 Guillaume Bougard
+       - Working on a croak regression with failing name resolution, RT #124830
+       Features
+       - Added icmp message_type method with timestamp support.
+         PR #11 Guillaume Bougard
+
 2.66  Thu Mar  8 16:44:03 CET 2018 (rurban)
        Bugfixes
        - Fixed icmpv6 ICMP_ECHOREPLY: nikolas@garofil.be RT 80479
