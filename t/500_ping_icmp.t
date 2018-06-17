@@ -50,6 +50,11 @@ SKIP: {
     if !Net::Ping::_isroot() or $^O eq 'MSWin32';
   my $p = new Net::Ping "icmp";
   is($p->message_type(), 'echo', "default icmp message type is 'echo'");
+  # message_type fails on wrong message type
+  eval {
+    $p->message_type('information');
+  };
+  like($@, qr/icmp message type are limited to 'echo' and 'timestamp'/, "Failure on wrong message type");
   my $result = $p->ping("127.0.0.1");
   if ($result == 1) {
     is($result, 1, "icmp ping 127.0.0.1");
