@@ -46,9 +46,10 @@ if (!Net::Ping::_isroot()) {
 }
 
 SKIP: {
-  skip "icmp ping requires root privileges.", 1
+  skip "icmp ping requires root privileges.", 2
     if !Net::Ping::_isroot() or $^O eq 'MSWin32';
   my $p = new Net::Ping "icmp";
+  is($p->message_type(), 'echo', "default icmp message type is 'echo'");
   my $result = $p->ping("127.0.0.1");
   if ($result == 1) {
     is($result, 1, "icmp ping 127.0.0.1");
