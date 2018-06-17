@@ -4,7 +4,9 @@ CHANGES
 2.67   (rurban)
        Bugfixes
        - Fixed non-core icmp ping test. PR #10 Guillaume Bougard
-       - Working on a croak regression with failing name resolution, RT #124830
+       - Change croak on failing name lookup to return undef,
+         matching the documentation.
+         Fixes the regression from 2.43, RT #124830
        Features
        - Added icmp message_type method with timestamp support.
          PR #11 Guillaume Bougard

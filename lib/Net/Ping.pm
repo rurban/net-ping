@@ -146,8 +146,8 @@ sub new
 
   if ($self->{'host'}) {
     my $host = $self->{'host'};
-    my $ip = _resolv($host)
-      or croak("could not resolve host $host");
+    my $ip = _resolv($host) or
+      carp("could not resolve host $host");
     $self->{host} = $ip;
     $self->{family} = $ip->{family};
   }
@@ -155,7 +155,7 @@ sub new
   if ($self->{bind}) {
     my $addr = $self->{bind};
     my $ip = _resolv($addr)
-      or croak("could not resolve local addr $addr");
+      or carp("could not resolve local addr $addr");
     $self->{local_addr} = $ip;
   } else {
     $self->{local_addr} = undef;              # Don't bind by default
@@ -330,7 +330,7 @@ sub bind
     ($self->{proto} eq "udp" || $self->{proto} eq "icmp");
 
   $ip = $self->_resolv($local_addr);
-  croak("nonexistent local address $local_addr") unless defined($ip);
+  carp("nonexistent local address $local_addr") unless defined($ip);
   $self->{local_addr} = $ip;
 
   if (($self->{proto} ne "udp") && 
@@ -1190,13 +1190,14 @@ sub open
     $self->{family_local} = $self->{family};
   }
 
-  $ip = $self->_resolv($host);
   $timeout = $self->{timeout} unless $timeout;
+  $ip = $self->_resolv($host);
 
-  if($self->{proto} eq "stream") {
-    if(defined($self->{fh}->fileno())) {
+  if ($self->{proto} eq "stream") {
+    if (defined($self->{fh}->fileno())) {
       croak("socket is already open");
     } else {
+      return () unless $ip;
       $self->tcp_connect($ip, $timeout);
     }
   }
@@ -1911,10 +1912,10 @@ sub _resolv {
         }
         return \%h
       } else {
-        croak("getnameinfo($getaddr[0]->{addr}) failed - $err");
+        carp("getnameinfo($getaddr[0]->{addr}) failed - $err");
       }
     } else {
-      croak(sprintf("getaddrinfo($h{host},,%s) failed - $err",
+      warn(sprintf("getaddrinfo($h{host},,%s) failed - $err",
                     $family == AF_INET ? "AF_INET" : "AF_INET6"));
     }
   # old way
@@ -1930,7 +1931,7 @@ sub _resolv {
       $h{family} = AF_INET;
       return \%h
     } else {
-      croak("gethostbyname($h{host}) failed - $^E");
+      carp("gethostbyname($h{host}) failed - $^E");
     }
   }
 }
@@ -1972,7 +1973,7 @@ sub _inet_ntoa {
     if (defined($address)) {
       $ret = $address;
     } else {
-      croak("getnameinfo($addr) failed - $err");
+      carp("getnameinfo($addr) failed - $err");
     }
   } else {
     $ret = inet_ntoa($addr)
