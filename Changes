@@ -2,7 +2,7 @@ CHANGES
 -------
 
 
-2.67   (rurban)
+2.67  Mon Jun 25 18:10:42 CEST 2018 (rurban)
        Bugfixes
        - Fixed non-core icmp ping test. PR #10 Guillaume Bougard
        - Change croak on failing name lookup to return undef,
