@@ -1,12 +1,15 @@
 CHANGES
 -------
 
+
 2.67   (rurban)
        Bugfixes
        - Fixed non-core icmp ping test. PR #10 Guillaume Bougard
        - Change croak on failing name lookup to return undef,
          matching the documentation.
          Fixes the regression from 2.43, RT #124830
+       - Stabilize Socket::VERSION comparisons, errored with Net::Socket
+         2.020_03, RT #125677 Smoot Carl-Mitchell
        Features
        - Added icmp message_type method with timestamp support.
          PR #11 Guillaume Bougard

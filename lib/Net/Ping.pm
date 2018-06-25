@@ -48,6 +48,7 @@ my $NIx_NOSERV = eval { Socket::NIx_NOSERV() } || 2;
 #my $IPV6_HOPLIMIT  = eval { Socket::IPV6_HOPLIMIT() };  # ping6 -h 0-255
 my $qr_family = qr/^(?:(?:(:?ip)?v?(?:4|6))|${\AF_INET}|$AF_INET6)$/;
 my $qr_family4 = qr/^(?:(?:(:?ip)?v?4)|${\AF_INET})$/;
+my $Socket_VERSION = eval { $Socket::VERSION };
 
 if ($^O =~ /Win32/i) {
   # Hack to avoid this Win32 spewage:
@@ -1859,7 +1860,7 @@ sub _resolv {
 
   # address check
   # new way
-  if (eval($Socket::VERSION) > 1.94) {
+  if ($Socket_VERSION > 1.94) {
     my %hints = (
       family   => $AF_UNSPEC,
       protocol => IPPROTO_TCP,
@@ -1892,7 +1893,7 @@ sub _resolv {
 
   # resolve
   # new way
-  if ($Socket::VERSION >= 1.94) {
+  if ($Socket_VERSION >= 1.94) {
     my %hints = (
       family   => $family,
       protocol => IPPROTO_TCP
@@ -1968,7 +1969,7 @@ sub _inet_ntoa {
       ) = @_;
 
   my $ret;
-  if ($Socket::VERSION >= 1.94) {
+  if ($Socket_VERSION >= 1.94) {
     my ($err, $address) = Socket::getnameinfo($addr, $NI_NUMERICHOST);
     if (defined($address)) {
       $ret = $address;
