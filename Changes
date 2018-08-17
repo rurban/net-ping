@@ -1,6 +1,13 @@
 CHANGES
 -------
 
+2.71  Fri Aug 17 10:06:30 CEST 2018 (rurban)
+       Features
+       - Allow data_size > 1024, up to 65535, testing fragmented packets.
+         It is recommended to stay below 1472 though for the typical 1500 MTU.
+         Many simple devices do not allow fragmented ICMP packets (> 1472).
+         RT #17409
+
 2.70  Tue Aug  7 10:33:24 CEST 2018 (rurban)
        Test fixes
        - Fix broken skip count on 510_ping_udp.t (windows only)
