@@ -41,7 +41,7 @@ if (!Net::Ping::_isroot()) {
     if ($ENV{PERL_CORE} && $Config{ldlibpthname}) {
       my $up = File::Spec->updir();
       my $dir = Cwd::abs_path(File::Spec->catdir($up, $up));
-      $env .= " $Config{ldlibpthname}=$dir";
+      $env .= " $Config{ldlibpthname}=\"$dir\"";
     }
     if ($is_devel and
         system("sudo -n $env \"$^X\" $lib $file") == 0)
