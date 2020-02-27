@@ -696,6 +696,7 @@ sub ping_icmp
       $done,              # set to 1 when we are done
       $ret,               # Return value
       $recv_msg,          # Received message including IP header
+      $recv_msg_len,      # Length of recevied message, less any additional data
       $from_saddr,        # sockaddr_in of sender
       $from_port,         # Port packet was sent from
       $from_ip,           # Packed IP of sender
@@ -778,6 +779,7 @@ sub ping_icmp
       $from_pid = -1;
       $from_seq = -1;
       $from_saddr = recv($self->{fh}, $recv_msg, 1500, ICMP_FLAGS);
+      $recv_msg_len = length($recv_msg) - length($self->{data});
       ($from_port, $from_ip) = _unpack_sockaddr_in($from_saddr, $ip->{family});
       ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, 20, 2));
       if ($from_type == ICMP_TIMESTAMP_REPLY) {
@@ -786,9 +788,9 @@ sub ping_icmp
       } elsif ($from_type == ICMP_ECHOREPLY) {
         #warn "ICMP_ECHOREPLY: ", $ip->{family}, " ",$recv_msg, ":", length($recv_msg);
         ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 24, 4))
-          if ($ip->{family} == AF_INET && length $recv_msg == 28);
+          if ($ip->{family} == AF_INET && $recv_msg_len == 28);
         ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 4, 4))
-          if ($ip->{family} == $AF_INET6 && length $recv_msg == 8);
+          if ($ip->{family} == $AF_INET6 && $recv_msg_len == 8);
       } elsif ($from_type == ICMPv6_ECHOREPLY) {
         #($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 24, 4))
         #  if length $recv_msg >= 28;
@@ -796,7 +798,7 @@ sub ping_icmp
         #  if ($ip->{family} == AF_INET && length $recv_msg == 28);
         #warn "ICMPv6_ECHOREPLY: ", $ip->{family}, " ",$recv_msg, ":", length($recv_msg);
         ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 4, 4))
-          if ($ip->{family} == $AF_INET6 && length $recv_msg == 8);
+          if ($ip->{family} == $AF_INET6 && $recv_msg_len == 8);
       #} elsif ($from_type == ICMPv6_NI_REPLY) {
       #  ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 4, 4))
       #    if ($ip->{family} == $AF_INET6 && length $recv_msg == 8);
