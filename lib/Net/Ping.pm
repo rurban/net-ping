@@ -120,6 +120,13 @@ sub new
         # some are still globals
         if ($k eq 'pingstring') { $pingstring = $proto->{$k} }
         if ($k eq 'source_verify') { $source_verify = $proto->{$k} }
+        # and some are local
+        $timeout = $proto->{$k}   if ($k eq 'timeout');
+        $data_size = $proto->{$k} if ($k eq 'data_size');
+        $device = $proto->{$k}    if ($k eq 'device');
+        $tos = $proto->{$k}       if ($k eq 'tos');
+        $ttl = $proto->{$k}       if ($k eq 'ttl');
+        $family = $proto->{$k}    if ($k eq 'family');
         delete $proto->{$k};
       }
     }
