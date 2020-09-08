@@ -644,10 +644,11 @@ sub ping_external {
 # h2ph "asm/socket.h"
 # require "asm/socket.ph";
 use constant SO_BINDTODEVICE  => 25;
-use constant ICMP_ECHOREPLY   => 0; # ICMP packet types
+use constant ICMP_ECHOREPLY   => 0;   # ICMP packet types
 use constant ICMPv6_ECHOREPLY => 129; # ICMP packet types
-use constant ICMP_UNREACHABLE => 3; # ICMP packet types
+use constant ICMP_UNREACHABLE => 3;   # ICMP packet types
 use constant ICMPv6_UNREACHABLE => 1; # ICMP packet types
+use constant ICMPv6_NI_REPLY => 140;  # ICMP packet types
 use constant ICMP_ECHO        => 8;
 use constant ICMPv6_ECHO      => 128;
 use constant ICMP_TIME_EXCEEDED => 11; # ICMP packet types
@@ -781,36 +782,25 @@ sub ping_icmp
       $from_saddr = recv($self->{fh}, $recv_msg, 1500, ICMP_FLAGS);
       $recv_msg_len = length($recv_msg) - length($self->{data});
       ($from_port, $from_ip) = _unpack_sockaddr_in($from_saddr, $ip->{family});
-               # Looks like ICMP echo includes the header and ICMPv6 doesn't.
-               # IPv4 length($recv_msg) is 28 (20 header + 8 payload) while 
-               # IPv6 length is only 8.  $pyld = where the payload really 
-               # starts. 
-      my $pyld = ($ip->{family} == AF_INET) ? 20 : 0;
-      ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, $pyld, 2));
+      # ICMP echo includes the header and ICMPv6 doesn't.
+      # IPv4 length($recv_msg) is 28 (20 header + 8 payload)
+      # while IPv6 length is only 8 (sans header).
+      my $off = ($ip->{family} == AF_INET) ? 20 : 0; # payload offset
+      ($from_type, $from_subcode) = unpack("C2", substr($recv_msg, $off, 2));
       if ($from_type == ICMP_TIMESTAMP_REPLY) {
-        ($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 24, 4))
-          if length $recv_msg >= 28;
-      } elsif ($from_type == ICMP_ECHOREPLY) {
+        ($from_pid, $from_seq) = unpack("n3", substr($recv_msg, $off + 4, 4))
+          if length $recv_msg >= $off + 8;
+      } elsif ($from_type == ICMP_ECHOREPLY || $from_type == ICMPv6_ECHOREPLY) {
         #warn "ICMP_ECHOREPLY: ", $ip->{family}, " ",$recv_msg, ":", length($recv_msg);
-        ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 24, 4))
-          if ($ip->{family} == AF_INET && $recv_msg_len == 28);
+        ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, $off + 4, 4))
+          if $recv_msg_len == $off + 8;
+      } elsif ($from_type == ICMPv6_NI_REPLY) {
         ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 4, 4))
-          if ($ip->{family} == $AF_INET6 && $recv_msg_len == 8);
-      } elsif ($from_type == ICMPv6_ECHOREPLY) {
-        #($from_pid, $from_seq) = unpack("n3", substr($recv_msg, 24, 4))
-        #  if length $recv_msg >= 28;
-        #($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 24, 4))
-        #  if ($ip->{family} == AF_INET && length $recv_msg == 28);
-        #warn "ICMPv6_ECHOREPLY: ", $ip->{family}, " ",$recv_msg, ":", length($recv_msg);
-        ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 4, 4))
-          if ($ip->{family} == $AF_INET6 && $recv_msg_len == 8);
-      #} elsif ($from_type == ICMPv6_NI_REPLY) {
-      #  ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 4, 4))
-      #    if ($ip->{family} == $AF_INET6 && length $recv_msg == 8);
+          if ($ip->{family} == $AF_INET6 && length $recv_msg == 8);
       } else {
         #warn "ICMP: ", $from_type, " ",$ip->{family}, " ",$recv_msg, ":", length($recv_msg);
-        ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, 52, 4))
-          if length $recv_msg >= 56;
+        ($from_pid, $from_seq) = unpack("n2", substr($recv_msg, $off + 32, 4))
+          if length $recv_msg >= $off + 36;
       }
       $self->{from_ip} = $from_ip;
       $self->{from_type} = $from_type;
@@ -2377,7 +2367,7 @@ X<ping_icmp>
 
 The L</ping> method used with the icmp protocol.
 
-=item $p->ping_icmpv6([$host, $timeout, $family]) I<NYI>
+=item $p->ping_icmpv6([$host, $timeout, $family])
 X<ping_icmpv6>
 
 The L</ping> method used with the icmpv6 protocol.

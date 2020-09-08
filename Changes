@@ -1,9 +1,14 @@
 CHANGES
 -------
-2.74  Tue 08 Sep 2020 09:53:37 AM CEST (rurban)
+2.74  Tue 08 Sep 2020 11:32:37 AM CEST (rurban)
+      Features
+      - Add ICMPv6_NI_REPLY support.
       Bugfixes
+      - Fix icmp payload offset to match icmpv6 (JimC Leones GH #21)
+        Skip the 20 byte header to reliably find the various return types.
+        This unifies icmpv6 with icmp better.
       - Fix $SOCKET::VERSION eval (Petr Pavlu, PR #22)
-       META Changes
+      META Changes
       - Fix and improve the META repository as hashref, license as arrayref
         (Tom Hukins, PR #19)
       Test fixes
