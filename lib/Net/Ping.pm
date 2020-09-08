@@ -21,7 +21,7 @@ use Time::HiRes;
 @ISA = qw(Exporter);
 @EXPORT = qw(pingecho);
 @EXPORT_OK = qw(wakeonlan);
-$VERSION = "2.73";
+$VERSION = "2.74";
 
 # Globals
 
@@ -2574,7 +2574,7 @@ L<https://github.com/rurban/Net-Ping/issues>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2017-2018, Reini Urban.  All rights reserved.
+Copyright (c) 2017-2020, Reini Urban.  All rights reserved.
 
 Copyright (c) 2016, cPanel Inc.  All rights reserved.
 
