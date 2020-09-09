@@ -8,6 +8,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION
             $def_timeout $def_proto $def_factor $def_family
             $max_datasize $pingstring $hires $source_verify $syn_forking);
 use Fcntl qw( F_GETFL F_SETFL O_NONBLOCK );
+use Socket 2.007;
 use Socket qw( SOCK_DGRAM SOCK_STREAM SOCK_RAW AF_INET PF_INET IPPROTO_TCP
 	       SOL_SOCKET SO_ERROR SO_BROADCAST
                IPPROTO_IP IP_TOS IP_TTL

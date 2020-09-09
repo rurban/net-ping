@@ -43,24 +43,24 @@ push @extras,
   if $EUMM_VER gt '6.46';
 
 WriteMakefile(
-    NAME   => 'Net::Ping',
-    VERSION_FROM  => 'lib/Net/Ping.pm',
-    ABSTRACT_FROM => 'lib/Net/Ping.pm',
-    PREREQ_PM     => {
-        'Socket'      => '2.007',
-        'Test::More'  => 0,
-        'Time::HiRes' => 0,
-    },
-  TEST_REQUIRES => {
-    'Test::CPAN::Meta' => '0.12',
-    'Test::Pod' => '1.22',
-    'Test::Pod::Coverage' => '1.04',
-    'Test::Kwalitee' => '1.20',
-    'Test::More'    => 0,
+  NAME   => 'Net::Ping',
+  VERSION_FROM  => 'lib/Net/Ping.pm',
+  ABSTRACT_FROM => 'lib/Net/Ping.pm',
+  PREREQ_PM     => {
+    'Socket'      => '2.007',
+    'Test::More'  => 0,
+    'Time::HiRes' => 0,
   },
-    INSTALLDIRS => ($ENV{PERL_CORE} ? 'perl' : 'site'),
-    clean      => { FILES => 'Net-Ping-*' },
-    @extras
+  TEST_REQUIRES => {
+    'Test::CPAN::Meta'    => '0.12',
+    'Test::Pod'           => '1.22',
+    'Test::Pod::Coverage' => '1.04',
+    'Test::Kwalitee'      => '1.20',
+    'Test::More'          => 0,
+  },
+  INSTALLDIRS => ($ENV{PERL_CORE} ? 'perl' : 'site'),
+  clean      => { FILES => 'Net-Ping-*' },
+  @extras
 );
 
 package MY;
