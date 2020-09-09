@@ -38,7 +38,7 @@ push @extras,
             },
             license     => [ 'http://dev.perl.org/licenses/' ],
         },
-        #release_status => 'stable',
+        release_status => 'stable',
   }
   if $EUMM_VER gt '6.46';
 
@@ -51,6 +51,13 @@ WriteMakefile(
         'Test::More'  => 0,
         'Time::HiRes' => 0,
     },
+  TEST_REQUIRES => {
+    'Test::CPAN::Meta' => '0.12',
+    'Test::Pod' => '1.22',
+    'Test::Pod::Coverage' => '1.04',
+    'Test::Kwalitee' => '1.20',
+    'Test::More'    => 0,
+  },
     INSTALLDIRS => ($ENV{PERL_CORE} ? 'perl' : 'site'),
     clean      => { FILES => 'Net-Ping-*' },
     @extras

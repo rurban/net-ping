@@ -1,6 +1,6 @@
 CHANGES
 -------
-2.74  Tue 08 Sep 2020 11:32:37 AM CEST (rurban)
+2.74  2020-09-09 09:21:39 rurban
       Features
       - Add ICMPv6_NI_REPLY support.
       Bugfixes
@@ -11,6 +11,9 @@ CHANGES
       META Changes
       - Fix and improve the META repository as hashref, license as arrayref
         (Tom Hukins, PR #19)
+      - add TEST_REQUIRES
+      - sort MANIFEST
+      - add windows smokers: appveyor
       Test fixes
       - Improve the tcp test to localhost, when there is no route to localhost
         (freebsd mostly)
@@ -18,6 +21,7 @@ CHANGES
         (Christian Walde, PR #20)
       - Skip 501_ping_icmpv6.t when icmpv6 cannot be initialized. Mostly due to missing
         icmpv6 support. (GH #15)
+      - add more xt tests: t/602_kwalitee.t, t/603_meta.t, t/604_manifest.t
 
 2.73  Thu Feb 27 14:32:25 CET 2020 (rurban)
       Bugfixes
