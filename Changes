@@ -1,5 +1,17 @@
 CHANGES
 -------
+2.75  2021-02-22 11:08:05 rurban
+      Bugfixes
+      - Fixed wrong link to p5p message (jamieletual PR #25)
+      Test fixes:
+      - Disable all network tests with NO_NETWORK_TESTING=1 (Petr Písař PR #24)
+      - Use non-routable addresses for negative tests (Petr Písař PR #24)
+      - Remove some TEST_REQUIRES modules (Chris Williams PR #23)
+      - Fixed TEST_REQUIRES for older EUMM
+      - Added a test that ping on an unresolvable hostname does not croak,
+        just warns. (See GH #17)
+      - Added tests that named args override defaults (See GH #26)
+
 2.74  2020-09-09 09:21:39 rurban
       Features
       - Add ICMPv6_NI_REPLY support.

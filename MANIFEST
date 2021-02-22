@@ -19,6 +19,7 @@ t/140_stream_inst.t
 t/150_syn_inst.t
 t/190_alarm.t
 t/200_ping_tcp.t
+t/201_ping.t
 t/250_ping_hires.t
 t/300_ping_stream.t
 t/400_ping_syn.t
