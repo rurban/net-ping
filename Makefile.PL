@@ -41,6 +41,11 @@ push @extras,
         release_status => 'stable',
   }
   if $EUMM_VER gt '6.46';
+push @extras,  TEST_REQUIRES => {
+    'Test::Pod'           => '1.22',
+    'Test::More'          => 0,
+  }
+  if $EUMM_VER gt '6.64';
 
 WriteMakefile(
   NAME   => 'Net::Ping',
@@ -50,10 +55,6 @@ WriteMakefile(
     'Socket'      => '2.007',
     'Test::More'  => 0,
     'Time::HiRes' => 0,
-  },
-  TEST_REQUIRES => {
-    'Test::Pod'           => '1.22',
-    'Test::More'          => 0,
   },
   INSTALLDIRS => ($ENV{PERL_CORE} ? 'perl' : 'site'),
   clean      => { FILES => 'Net-Ping-*' },
