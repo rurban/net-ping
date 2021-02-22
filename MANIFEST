@@ -17,6 +17,7 @@ t/120_udp_inst.t
 t/130_tcp_inst.t
 t/140_stream_inst.t
 t/150_syn_inst.t
+t/160_namedargs.t
 t/190_alarm.t
 t/200_ping_tcp.t
 t/201_ping.t

@@ -146,9 +146,7 @@ sub new
   croak("Default timeout for ping must be greater than 0 seconds")
     if $timeout <= 0;
   $self->{timeout} = $timeout;
-
   $self->{device} = $device;
-
   $self->{tos} = $tos;
 
   if ($self->{'host'}) {
